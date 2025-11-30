@@ -32,33 +32,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       try {
         let dbUser;
         
-        if (session?.user?.id) {
-          // User is already signed in - link account to existing user
-          const { db } = await import("@/lib/db");
-          const { users } = await import("@/lib/schema");
-          const { eq } = await import("drizzle-orm");
-          
-          const [existingUser] = await db
-            .select()
-            .from(users)
-            .where(eq(users.id, session.user.id))
-            .limit(1);
-          
-          if (existingUser) {
-            dbUser = existingUser;
-          } else if (session.user.email) {
-            // Fallback to email if ID doesn't match
-            const [userByEmail] = await db
-              .select()
-              .from(users)
-              .where(eq(users.email, session.user.email))
-              .limit(1);
-            if (userByEmail) {
-              dbUser = userByEmail;
-            }
-          }
-        }
-        
         // If no existing user found, create/find by email
         if (!dbUser) {
           const email = user.email || `${user.id}@${account?.provider || 'unknown'}.local`;
