@@ -40,11 +40,18 @@ function getDb() {
   return dbInstance;
 }
 
-// Export a getter function that lazily initializes the database
-export const db = new Proxy({} as any, {
+// Create a proxy that lazily initializes the database
+const dbProxy = new Proxy({} as any, {
   get(_target, prop) {
     const db = getDb();
-    return db[prop];
+    const value = db[prop];
+    // If it's a function, bind it to the db instance
+    if (typeof value === 'function') {
+      return value.bind(db);
+    }
+    return value;
   }
 });
+
+export { dbProxy as db };
 

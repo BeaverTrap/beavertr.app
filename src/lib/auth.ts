@@ -1,7 +1,6 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import Twitch from "next-auth/providers/twitch";
-import { getOrCreateUser } from "@/lib/user";
 
 const providers: any[] = [
   Google({
@@ -42,8 +41,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.image = user.image;
         
         // Try to sync with database in background (don't block on errors)
+        // Use dynamic import to avoid loading database code at module initialization
         try {
           const email = user.email || `${user.id}@${account?.provider || 'unknown'}.local`;
+          const { getOrCreateUser } = await import("@/lib/user");
           const dbUser = await getOrCreateUser(
             email,
             user.name || undefined,
