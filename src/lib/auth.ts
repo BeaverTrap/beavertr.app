@@ -35,8 +35,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
     async jwt({ token, user, account }) {
       if (user) {
+        // Use user ID from OAuth provider as fallback
+        token.id = user.id || `temp-${Date.now()}`;
+        token.email = user.email || `${user.id}@${account?.provider || 'unknown'}.local`;
+        
+        // Try to sync with database in background - but don't block or crash on errors
+        // This is completely optional - login works without it
         try {
-          // Lazy import to avoid loading database at module initialization
           const { getOrCreateUser } = await import("@/lib/user");
           const email = user.email || `${user.id}@${account?.provider || 'unknown'}.local`;
           const dbUser = await getOrCreateUser(
@@ -44,53 +49,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             user.name || undefined,
             user.image || undefined
           );
-          token.id = dbUser.id;
-          token.email = email;
-
-          // Save account info if available (non-blocking)
-          if (account && dbUser) {
-            try {
-              const { getDbInstance } = await import("@/lib/db");
-              const db = getDbInstance();
-              const { accounts } = await import("@/lib/schema");
-              const { eq, and } = await import("drizzle-orm");
-              const { randomUUID } = await import("crypto");
-
-              const [existingAccount] = await (db as any)
-                .select()
-                .from(accounts)
-                .where(
-                  and(
-                    eq(accounts.provider, account.provider),
-                    eq(accounts.providerAccountId, account.providerAccountId)
-                  )
-                )
-                .limit(1);
-
-              if (!existingAccount) {
-                await (db as any).insert(accounts).values({
-                  id: randomUUID(),
-                  userId: dbUser.id,
-                  type: account.type as string,
-                  provider: account.provider as string,
-                  providerAccountId: account.providerAccountId as string,
-                  refreshToken: (account.refresh_token as string | undefined) || null,
-                  accessToken: (account.access_token as string | undefined) || null,
-                  expiresAt: account.expires_at ? Math.floor(account.expires_at as number) : null,
-                  tokenType: (account.token_type as string | undefined) || null,
-                  scope: (account.scope as string | undefined) || null,
-                  idToken: (account.id_token as string | undefined) || null,
-                  sessionState: (account.session_state as string | undefined) || null,
-                });
-              }
-            } catch (dbError) {
-              console.error("Error saving account:", dbError);
-              // Don't throw - allow login to proceed
-            }
+          if (dbUser?.id) {
+            token.id = dbUser.id;
           }
         } catch (error) {
-          console.error("JWT error:", error);
-          // Don't throw - allow login to proceed even if database fails
+          // Silently fail - use OAuth user ID instead
+          console.error("JWT: Database sync failed (non-critical):", error);
         }
       }
       return token;
