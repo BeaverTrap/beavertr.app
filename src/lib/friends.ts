@@ -1,5 +1,5 @@
-import { db } from './db';
 import { friendships, users } from './schema';
+// db is imported lazily when needed
 import { eq, and, or, inArray } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 
@@ -8,6 +8,9 @@ export async function sendFriendRequest(
   friendId: string,
   relationshipType: 'friend' | 'family' | 'streamer' | 'fan' = 'friend'
 ) {
+  const { getDbInstance } = await import('./db');
+  const db = getDbInstance();
+  
   // Check if relationship already exists
   const [existing] = await db
     .select()
@@ -47,6 +50,8 @@ export async function sendFriendRequest(
 }
 
 export async function acceptFriendRequest(friendshipId: string) {
+  const { getDbInstance } = await import('./db');
+  const db = getDbInstance();
   const now = new Date();
   
   await db
@@ -59,6 +64,9 @@ export async function acceptFriendRequest(friendshipId: string) {
 }
 
 export async function getFriends(userId: string) {
+  const { getDbInstance } = await import('./db');
+  const db = getDbInstance();
+  
   const friendShips = await db
     .select()
     .from(friendships)
@@ -85,6 +93,9 @@ export async function getFriends(userId: string) {
 }
 
 export async function getPendingRequests(userId: string) {
+  const { getDbInstance } = await import('./db');
+  const db = getDbInstance();
+  
   const pending = await db
     .select()
     .from(friendships)
