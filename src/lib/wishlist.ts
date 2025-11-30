@@ -147,7 +147,7 @@ export async function deleteWishlistItem(userId: string, id: string): Promise<bo
     .delete(wishlistItems)
     .where(and(eq(wishlistItems.id, id), eq(wishlistItems.userId, userId)));
   
-  return result.changes > 0;
+  return (result as any).changes > 0;
 }
 
 export async function claimItem(itemId: string, userId: string) {

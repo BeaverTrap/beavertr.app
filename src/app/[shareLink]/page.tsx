@@ -93,7 +93,7 @@ export default async function ShareLinkPage({
   const items = await getWishlistItems(wishlist.id);
   
   // Fetch creator info and shipping address
-  const [creator] = await db
+  const [creator] = await (db as any)
     .select({ 
       username: users.username, 
       name: users.name,

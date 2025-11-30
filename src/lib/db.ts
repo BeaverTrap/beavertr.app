@@ -1,57 +1,30 @@
 import { createClient } from '@libsql/client';
 import { drizzle as drizzleLibsql } from 'drizzle-orm/libsql';
+import { drizzle as drizzleSqlite } from 'drizzle-orm/better-sqlite3';
+import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
+import type { LibSQLDatabase } from 'drizzle-orm/libsql';
 import * as schema from './schema';
 
-// Lazy database connection - only connect when actually used
-// This prevents connection errors at module load time in serverless environments
-let dbInstance: any = null;
+// Check if we're using Turso (production) or local SQLite (development)
+const databaseUrl = process.env.DATABASE_URL;
 
-function getDb() {
-  if (dbInstance) {
-    return dbInstance;
-  }
+// Create db instance based on environment
+let db: LibSQLDatabase<typeof schema> | BetterSQLite3Database<typeof schema>;
 
-  try {
-    const databaseUrl = process.env.DATABASE_URL;
-
-    if (databaseUrl && databaseUrl.startsWith('libsql://')) {
-      // Production: Use Turso/libSQL
-      if (!process.env.TURSO_AUTH_TOKEN) {
-        console.error('TURSO_AUTH_TOKEN is missing!');
-        throw new Error('TURSO_AUTH_TOKEN is required when using Turso database');
-      }
-      const client = createClient({
-        url: databaseUrl,
-        authToken: process.env.TURSO_AUTH_TOKEN,
-      });
-      dbInstance = drizzleLibsql(client, { schema });
-    } else {
-      // Development: Use local SQLite file
-      const Database = require('better-sqlite3');
-      const { drizzle: drizzleSqlite } = require('drizzle-orm/better-sqlite3');
-      const sqlite = new Database('./dev.db');
-      dbInstance = drizzleSqlite(sqlite, { schema });
-    }
-  } catch (error: any) {
-    console.error('Database connection error:', error);
-    throw error;
-  }
-
-  return dbInstance;
+if (databaseUrl && databaseUrl.startsWith('libsql://')) {
+  // Production: Use Turso/libSQL
+  const client = createClient({
+    url: databaseUrl,
+    authToken: process.env.TURSO_AUTH_TOKEN,
+  });
+  db = drizzleLibsql(client, { schema });
+} else {
+  // Development: Use local SQLite file
+  // Use dynamic require to avoid bundling in production
+  const Database = require('better-sqlite3');
+  const sqlite = new Database('./dev.db');
+  db = drizzleSqlite(sqlite, { schema });
 }
 
-// Create a proxy that lazily initializes the database
-const dbProxy = new Proxy({} as any, {
-  get(_target, prop) {
-    const db = getDb();
-    const value = db[prop];
-    // If it's a function, bind it to the db instance
-    if (typeof value === 'function') {
-      return value.bind(db);
-    }
-    return value;
-  }
-});
-
-export { dbProxy as db };
+export { db };
 

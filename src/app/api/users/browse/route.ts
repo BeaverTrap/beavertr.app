@@ -9,7 +9,7 @@ export async function GET() {
   
   // Get all users who have public wishlists
   // Make sure we're checking for 'public' string value
-  const publicWishlists = await db
+  const publicWishlists = await (db as any)
     .select({ userId: wishlists.userId })
     .from(wishlists)
     .where(eq(wishlists.privacy, 'public'));
@@ -34,7 +34,7 @@ export async function GET() {
   }
   
   // Get user details
-  const publicUsers = await db
+  const publicUsers = await (db as any)
     .select({
       id: users.id,
       name: users.name,

@@ -13,7 +13,7 @@ export async function GET() {
 
   try {
     // Find user by email (most reliable)
-    const [user] = await db
+    const [user] = await (db as any)
       .select({
         id: users.id,
         name: users.name,
