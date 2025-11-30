@@ -1,36 +1,85 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# beavertr.app
 
-## Getting Started
+Portfolio site for art, web design, and coding projects.
 
-First, run the development server:
+## Setup
 
+1. Install dependencies:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Set up environment variables:
+Create a `.env.local` file with:
+```env
+DATABASE_URL="file:./dev.db"
+NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_SECRET="your-secret-key-here"
+GOOGLE_CLIENT_ID="your-google-client-id"
+GOOGLE_CLIENT_SECRET="your-google-client-secret"
+TWITCH_CLIENT_ID="your-twitch-client-id"
+TWITCH_CLIENT_SECRET="your-twitch-client-secret"
+STEAM_API_KEY="your-steam-api-key"
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Set up OAuth providers:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+   **Google OAuth:**
+   - Go to [Google Cloud Console](https://console.cloud.google.com/)
+   - Create a new project or select an existing one
+   - Navigate to "APIs & Services" > "Credentials"
+   - Click "Create Credentials" > "OAuth client ID"
+   - If prompted, configure the OAuth consent screen first:
+     * Choose "External" user type (unless you have a Google Workspace)
+     * Fill in the required app information (name, email, etc.)
+     * Add your email to test users if needed
+   - For Application type, select "Web application"
+   - Add authorized redirect URI: `http://localhost:3000/api/auth/callback/google`
+   - Click "Create" and copy the Client ID and Client Secret
+   - Paste them into your `.env.local` file
 
-## Learn More
+   **Twitch OAuth:**
+   - Go to [Twitch Developer Console](https://dev.twitch.tv/console)
+   - Log in with your Twitch account
+   - Click "Register Your Application"
+   - Fill in:
+     * **Name:** Your application name (e.g., `beavertr.app`)
+     * **OAuth Redirect URLs:** `http://localhost:3000/api/auth/callback/twitch`
+       - For production, also add: `https://beavertr.app/api/auth/callback/twitch`
+     * **Category:** Select "Website Integration" or "Other"
+   - Click "Create" and copy the Client ID and Client Secret
+   - Paste them into your `.env.local` file as `TWITCH_CLIENT_ID` and `TWITCH_CLIENT_SECRET`
 
-To learn more about Next.js, take a look at the following resources:
+   **Steam OpenID (Optional but Recommended):**
+   - Go to [Steam Web API Key](https://steamcommunity.com/dev/apikey)
+   - Sign in with your Steam account
+   - Enter a domain name (e.g., `beavertr.app` or `localhost`)
+   - Click "Register" and copy the API key
+   - Paste it into your `.env.local` file as `STEAM_API_KEY`
+   - **Note:** Steam login will work without the API key, but user profile info (name, avatar) won't be fetched
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+4. Generate a NextAuth secret:
+```bash
+openssl rand -base64 32
+```
+Or use any random string generator.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+5. Run database migrations:
+```bash
+npx prisma migrate dev
+```
 
-## Deploy on Vercel
+6. Start the development server:
+```bash
+npm run dev
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Open [http://localhost:3000](http://localhost:3000) to see the site.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Features
+
+- Multiple OAuth providers (Google, Twitch, Steam)
+- User-specific wishlist with database persistence
+- Social features (friends, moderators, anonymous purchases)
+- Art portfolio section
+- Project showcase
