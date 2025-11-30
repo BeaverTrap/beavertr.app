@@ -7,7 +7,7 @@ export async function getDefaultWishlist(userId: string) {
   const [defaultWishlist] = await db
     .select()
     .from(wishlists)
-    .where(and(eq(wishlists.userId, userId), eq(wishlists.isDefault, 1)))
+    .where(and(eq(wishlists.userId, userId), eq(wishlists.isDefault, true)))
     .limit(1);
   
   if (defaultWishlist) return defaultWishlist;

@@ -3,7 +3,7 @@ import Google from "next-auth/providers/google";
 import Twitch from "next-auth/providers/twitch";
 import { getOrCreateUser } from "@/lib/user";
 
-const providers = [
+const providers: any[] = [
   Google({
     clientId: process.env.GOOGLE_CLIENT_ID!,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
@@ -93,16 +93,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             await db.insert(accounts).values({
               id: randomUUID(),
               userId: dbUser.id,
-              type: account.type,
-              provider: account.provider,
-              providerAccountId: account.providerAccountId,
-              refreshToken: account.refresh_token || null,
-              accessToken: account.access_token || null,
-              expiresAt: account.expires_at ? new Date(account.expires_at * 1000).getTime() : null,
-              tokenType: account.token_type || null,
-              scope: account.scope || null,
-              idToken: account.id_token || null,
-              sessionState: account.session_state || null,
+              type: account.type as string,
+              provider: account.provider as string,
+              providerAccountId: account.providerAccountId as string,
+              refreshToken: (account.refresh_token as string | undefined) || null,
+              accessToken: (account.access_token as string | undefined) || null,
+              expiresAt: account.expires_at ? Math.floor(account.expires_at as number) : null,
+              tokenType: (account.token_type as string | undefined) || null,
+              scope: (account.scope as string | undefined) || null,
+              idToken: (account.id_token as string | undefined) || null,
+              sessionState: (account.session_state as string | undefined) || null,
             });
           } else {
             // Update existing account with new tokens
@@ -110,11 +110,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               .update(accounts)
               .set({
                 userId: dbUser.id,
-                refreshToken: account.refresh_token || existingAccount.refreshToken,
-                accessToken: account.access_token || existingAccount.accessToken,
-                expiresAt: account.expires_at ? new Date(account.expires_at * 1000).getTime() : existingAccount.expiresAt,
-                tokenType: account.token_type || existingAccount.tokenType,
-                scope: account.scope || existingAccount.scope,
+                refreshToken: ((account.refresh_token as string | undefined) || existingAccount.refreshToken) || null,
+                accessToken: ((account.access_token as string | undefined) || existingAccount.accessToken) || null,
+                expiresAt: account.expires_at ? Math.floor(account.expires_at as number) : existingAccount.expiresAt,
+                tokenType: ((account.token_type as string | undefined) || existingAccount.tokenType) || null,
+                scope: ((account.scope as string | undefined) || existingAccount.scope) || null,
               })
               .where(eq(accounts.id, existingAccount.id));
           }

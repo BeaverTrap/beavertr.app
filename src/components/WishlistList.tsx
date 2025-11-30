@@ -64,7 +64,6 @@ function getStoreName(url: string): string {
         'bestbuy.com': 'Best Buy',
         'etsy.com': 'Etsy',
         'ebay.com': 'eBay',
-        'etsy.com': 'Etsy',
         'shopify.com': 'Shopify Store',
         'bigcommerce.com': 'BigCommerce Store',
       };
@@ -531,7 +530,7 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
                 {item.proofVerifiedAt && (
                   <p className="text-zinc-500 text-xs mt-2">
                     Verified on {new Date(item.proofVerifiedAt).toLocaleDateString()}
-                    {item.proofVerifiedBy && item.proofVerifiedBy !== item.userId && (
+                    {item.proofVerifiedBy && (
                       <span className="ml-2">(by moderator)</span>
                     )}
                   </p>
@@ -627,7 +626,7 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
                   return false;
                 }
               })();
-              const purchaseUrl = isValidAffiliateUrl ? item.affiliateUrl : item.url;
+              const purchaseUrl = (isValidAffiliateUrl ? item.affiliateUrl : item.url) || item.url;
               
               return (
                 <a
@@ -724,7 +723,7 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
                         return false;
                       }
                     })();
-                    const purchaseUrl = isValidAffiliateUrl ? item.affiliateUrl : item.url;
+                    const purchaseUrl = (isValidAffiliateUrl ? item.affiliateUrl : item.url) || item.url;
                     
                     return (
                       <a
