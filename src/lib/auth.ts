@@ -1,7 +1,6 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import Twitch from "next-auth/providers/twitch";
-import { getOrCreateUser } from "@/lib/user";
 
 const providers: any[] = [
   Google({
@@ -30,6 +29,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     async signIn({ user, account }) {
       try {
+        // Lazy import to avoid loading database at module initialization
+        const { getOrCreateUser } = await import("@/lib/user");
         const email = user.email || `${user.id}@${account?.provider || 'unknown'}.local`;
         const dbUser = await getOrCreateUser(
           email,
@@ -96,6 +97,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async jwt({ token, user, account }) {
       if (user) {
         try {
+          // Lazy import to avoid loading database at module initialization
+          const { getOrCreateUser } = await import("@/lib/user");
           const email = user.email || `${user.id}@${account?.provider || 'unknown'}.local`;
           const dbUser = await getOrCreateUser(
             email,

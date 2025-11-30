@@ -1,9 +1,11 @@
-import { db } from './db';
 import { users } from './schema';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 
 export async function getOrCreateUser(email: string, name?: string, image?: string) {
+  // Lazy import db to avoid loading it at module initialization
+  const { db } = await import('./db');
+  
   // Try to find existing user
   const [existingUser] = await db
     .select()
@@ -57,6 +59,9 @@ export async function getOrCreateUser(email: string, name?: string, image?: stri
 }
 
 export async function getUserById(userId: string) {
+  // Lazy import db to avoid loading it at module initialization
+  const { db } = await import('./db');
+  
   const [user] = await db
     .select()
     .from(users)
