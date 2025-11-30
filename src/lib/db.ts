@@ -1,7 +1,5 @@
 import { createClient } from '@libsql/client';
-import Database from 'better-sqlite3';
 import { drizzle as drizzleLibsql } from 'drizzle-orm/libsql';
-import { drizzle as drizzleSqlite } from 'drizzle-orm/better-sqlite3';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import * as schema from './schema';
 
@@ -9,21 +7,23 @@ import * as schema from './schema';
 const databaseUrl = process.env.DATABASE_URL;
 
 // Create db instance based on environment
-// Cast to BetterSQLite3Database type since both have compatible APIs
-const db = (databaseUrl && databaseUrl.startsWith('libsql://')
-  ? (() => {
-      // Production: Use Turso/libSQL
-      const client = createClient({
-        url: databaseUrl,
-        authToken: process.env.TURSO_AUTH_TOKEN,
-      });
-      return drizzleLibsql(client, { schema });
-    })()
-  : (() => {
-      // Development: Use local SQLite file
-      const sqlite = new Database('./dev.db');
-      return drizzleSqlite(sqlite, { schema });
-    })()) as BetterSQLite3Database<typeof schema>;
+// Use dynamic import for better-sqlite3 to avoid loading it in production
+let db: any;
+
+if (databaseUrl && databaseUrl.startsWith('libsql://')) {
+  // Production: Use Turso/libSQL
+  const client = createClient({
+    url: databaseUrl,
+    authToken: process.env.TURSO_AUTH_TOKEN,
+  });
+  db = drizzleLibsql(client, { schema });
+} else {
+  // Development: Use local SQLite file (lazy load to avoid issues in production)
+  const Database = require('better-sqlite3');
+  const { drizzle: drizzleSqlite } = require('drizzle-orm/better-sqlite3');
+  const sqlite = new Database('./dev.db');
+  db = drizzleSqlite(sqlite, { schema });
+}
 
 export { db };
 

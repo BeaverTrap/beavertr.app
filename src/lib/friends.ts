@@ -67,7 +67,7 @@ export async function getFriends(userId: string) {
       eq(friendships.status, 'accepted')
     ));
   
-  const friendIds = friendShips.map(f => f.friendId);
+  const friendIds = friendShips.map((f: any) => f.friendId);
   if (friendIds.length === 0) return [];
   
   const friendUsers = await db
@@ -75,8 +75,8 @@ export async function getFriends(userId: string) {
     .from(users)
     .where(inArray(users.id, friendIds));
   
-  return friendShips.map(fs => {
-    const user = friendUsers.find(u => u.id === fs.friendId);
+  return friendShips.map((fs: any) => {
+    const user = friendUsers.find((u: any) => u.id === fs.friendId);
     return {
       friendship: fs,
       user: user || { id: fs.friendId, name: null, email: null, image: null, username: null },
@@ -96,14 +96,14 @@ export async function getPendingRequests(userId: string) {
   if (pending.length === 0) return [];
   
   // Fetch users for pending requests
-  const userIds = [...new Set(pending.map(p => p.userId))];
+  const userIds = [...new Set(pending.map((p: any) => p.userId))];
   const requestUsers = await db
     .select()
     .from(users)
-    .where(inArray(users.id, userIds));
+    .where(inArray(users.id, userIds as string[]));
   
-  return pending.map(p => {
-    const user = requestUsers.find(u => u.id === p.userId);
+  return pending.map((p: any) => {
+    const user = requestUsers.find((u: any) => u.id === p.userId);
     return {
       friendship: p,
       user: user || { id: p.userId, name: null, email: null, image: null, username: null },

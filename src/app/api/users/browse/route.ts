@@ -16,7 +16,7 @@ export async function GET() {
   
   console.log("Public wishlists found:", publicWishlists.length);
   
-  const userIds = [...new Set(publicWishlists.map(w => w.userId))];
+  const userIds = [...new Set(publicWishlists.map((w: any) => w.userId))];
   
   if (userIds.length === 0) {
     console.log("No users with public wishlists");
@@ -43,7 +43,7 @@ export async function GET() {
       username: users.username,
     })
     .from(users)
-    .where(inArray(users.id, filteredUserIds));
+    .where(inArray(users.id, filteredUserIds as string[]));
   
   console.log("Public users:", publicUsers.length);
   

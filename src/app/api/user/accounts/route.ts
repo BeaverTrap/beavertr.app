@@ -41,7 +41,7 @@ export async function GET() {
       .where(eq(accounts.userId, userId));
 
     // Format the response
-    const accountsList = connectedAccounts.map(account => ({
+    const accountsList = connectedAccounts.map((account: any) => ({
       provider: account.provider,
       type: account.type,
       providerAccountId: account.providerAccountId,
