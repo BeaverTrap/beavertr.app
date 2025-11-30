@@ -14,7 +14,7 @@ export async function GET() {
     };
 
     // Test 2: Try to import and initialize database
-    let dbTest = { success: false, error: null as any };
+    let dbTest: any = { success: false, error: null };
     try {
       const { db } = await import('@/lib/db');
       const { users } = await import('@/lib/schema');
@@ -32,7 +32,7 @@ export async function GET() {
     }
 
     // Test 3: Try to import NextAuth
-    let authTest = { success: false, error: null as any };
+    let authTest: any = { success: false, error: null };
     try {
       const { auth } = await import('@/lib/auth');
       const session = await auth();
