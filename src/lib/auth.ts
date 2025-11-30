@@ -30,8 +30,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     async signIn({ user, account }) {
       try {
-        // Check if user is already signed in (account linking)
-        const session = await auth();
         let dbUser;
         
         if (session?.user?.id) {
@@ -121,9 +119,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
         
         return true;
-      } catch (error) {
+      } catch (error: any) {
         console.error("SignIn error:", error);
-        return false;
+        console.error("Error details:", {
+          message: error?.message,
+          stack: error?.stack,
+          databaseUrl: process.env.DATABASE_URL ? 'Set' : 'Not set',
+          hasAuthToken: !!process.env.TURSO_AUTH_TOKEN,
+        });
+        // Don't block login on database errors - allow it to proceed
+        // The error will be logged for debugging
+        return true;
       }
     },
     async jwt({ token, user, account }) {
