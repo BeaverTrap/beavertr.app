@@ -4,7 +4,8 @@ import { randomUUID } from 'crypto';
 
 export async function getOrCreateUser(email: string, name?: string, image?: string) {
   // Lazy import db to avoid loading it at module initialization
-  const { db } = await import('./db');
+  const { getDbInstance } = await import('./db');
+  const db = getDbInstance();
   
   // Try to find existing user
   const [existingUser] = await db
@@ -60,7 +61,8 @@ export async function getOrCreateUser(email: string, name?: string, image?: stri
 
 export async function getUserById(userId: string) {
   // Lazy import db to avoid loading it at module initialization
-  const { db } = await import('./db');
+  const { getDbInstance } = await import('./db');
+  const db = getDbInstance();
   
   const [user] = await db
     .select()
