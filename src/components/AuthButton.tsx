@@ -81,7 +81,7 @@ export default function AuthButton() {
 
   return (
     <button
-      onClick={() => signIn("google", { callbackUrl: window.location.href })}
+      onClick={() => signIn("google", { callbackUrl: "/" })}
       className="px-4 py-2 text-white/70 hover:text-white text-sm transition-colors"
     >
       Sign in
