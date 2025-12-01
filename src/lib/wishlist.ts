@@ -74,6 +74,7 @@ export async function addWishlistItem(
     description?: string;
     priority?: number;
     notes?: string;
+    itemType?: string;
     size?: string;
     quantity?: number;
   }
@@ -91,6 +92,7 @@ export async function addWishlistItem(
     description: data.description || null,
     priority: data.priority || 0,
     notes: data.notes || null,
+    itemType: data.itemType || null,
     size: data.size || null,
     quantity: data.quantity || null,
     wishlistId,
@@ -118,6 +120,7 @@ export async function updateWishlistItem(
     description?: string;
     priority?: number;
     notes?: string;
+    itemType?: string;
     size?: string;
     quantity?: number;
     affiliateUrl?: string;

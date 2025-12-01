@@ -66,6 +66,7 @@ export const wishlistItems = sqliteTable('wishlistItems', {
   description: text('description'),
   priority: integer('priority').default(0), // 0 = normal, 1 = high, -1 = low
   notes: text('notes'),
+  itemType: text('itemType'), // Type of item: 'clothing', 'shoes', 'hat', 'accessories', 'other', null
   size: text('size'), // Size (e.g., "Large", "XL", "10")
   quantity: integer('quantity'), // Quantity desired
   claimedBy: text('claimedBy'), // userId who claimed it

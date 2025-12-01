@@ -12,6 +12,8 @@ export default function WishlistForm({ wishlistId, onItemAdded }: WishlistFormPr
   const [link, setLink] = useState("");
   const [loading, setLoading] = useState(false);
   const [userAffiliateTag, setUserAffiliateTag] = useState<string | null>(null);
+  const [itemType, setItemType] = useState<string>("");
+  const [size, setSize] = useState<string>("");
   const { data: session } = useSession();
 
   // Fetch user's affiliate tag on mount
@@ -129,12 +131,16 @@ export default function WishlistForm({ wishlistId, onItemAdded }: WishlistFormPr
           wishlistId,
           url: finalUrl,
           affiliateUrl: affiliateUrl,
+          itemType: itemType || null,
+          size: size.trim() || null,
           ...scrapedData,
         }),
       });
 
       if (response.ok) {
         setLink("");
+        setItemType("");
+        setSize("");
         if (onItemAdded) {
           onItemAdded();
         } else {
@@ -201,6 +207,41 @@ export default function WishlistForm({ wishlistId, onItemAdded }: WishlistFormPr
                 "Add Item"
               )}
             </button>
+          </div>
+        </div>
+
+        {/* Item Type and Size Fields */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-zinc-300 mb-2">
+              Item Type (Optional)
+            </label>
+            <select
+              value={itemType}
+              onChange={(e) => setItemType(e.target.value)}
+              className="w-full px-4 py-2 rounded-xl bg-zinc-800/80 border border-zinc-700/50 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
+              disabled={loading}
+            >
+              <option value="">Select type...</option>
+              <option value="clothing">👕 Clothing</option>
+              <option value="shoes">👟 Shoes</option>
+              <option value="hat">🧢 Hat</option>
+              <option value="accessories">💍 Accessories</option>
+              <option value="other">📦 Other</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-zinc-300 mb-2">
+              Size (Optional)
+            </label>
+            <input
+              type="text"
+              value={size}
+              onChange={(e) => setSize(e.target.value)}
+              placeholder="e.g., Large, XL, 10, 42"
+              className="w-full px-4 py-2 rounded-xl bg-zinc-800/80 border border-zinc-700/50 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
+              disabled={loading}
+            />
           </div>
         </div>
       </form>

@@ -16,6 +16,7 @@ interface WishlistItem {
   description?: string | null;
   priority?: number | null;
   notes?: string | null;
+  itemType?: string | null;
   size?: string | null;
   quantity?: number | null;
   isClaimed?: boolean;
@@ -568,12 +569,25 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
             </div>
           )}
 
-          {/* Size, Quantity, Notes */}
-          {(item.size || item.quantity || item.notes) && (
+          {/* Item Type, Size, Quantity, Notes */}
+          {(item.itemType || item.size || item.quantity || item.notes) && (
             <div className="text-sm text-zinc-400 mb-3 space-y-1">
+              {item.itemType && (
+                <div className="flex items-center gap-2">
+                  <span className="text-zinc-500">Type:</span>
+                  <span className="text-white font-medium capitalize">
+                    {item.itemType === 'clothing' && '👕 Clothing'}
+                    {item.itemType === 'shoes' && '👟 Shoes'}
+                    {item.itemType === 'hat' && '🧢 Hat'}
+                    {item.itemType === 'accessories' && '💍 Accessories'}
+                    {item.itemType === 'other' && '📦 Other'}
+                    {!['clothing', 'shoes', 'hat', 'accessories', 'other'].includes(item.itemType) && item.itemType}
+                  </span>
+                </div>
+              )}
               {item.size && (
                 <div>
-                  <span className="text-zinc-500">Size:</span> <span className="text-white">{item.size}</span>
+                  <span className="text-zinc-500">Size:</span> <span className="text-white font-medium">{item.size}</span>
                 </div>
               )}
               {item.quantity && (
