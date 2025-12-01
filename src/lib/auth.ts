@@ -6,6 +6,13 @@ const providers: any[] = [
   Google({
     clientId: process.env.GOOGLE_CLIENT_ID!,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    authorization: {
+      params: {
+        prompt: "consent",
+        access_type: "offline",
+        response_type: "code"
+      }
+    }
   }),
 ];
 
@@ -23,6 +30,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   secret: process.env.NEXTAUTH_SECRET,
   trustHost: true,
   basePath: "/api/auth",
+  // Explicitly set the URL to prevent redirect issues
+  url: process.env.NEXTAUTH_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined),
   callbacks: {
     async signIn({ user, account }) {
       // CRITICAL FIX: Return true immediately - don't block on database
