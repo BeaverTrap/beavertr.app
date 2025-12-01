@@ -23,9 +23,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   secret: process.env.NEXTAUTH_SECRET,
   trustHost: true,
   basePath: "/api/auth",
-  pages: {
-    signIn: "/",
-  },
   callbacks: {
     async signIn({ user, account }) {
       // CRITICAL FIX: Return true immediately - don't block on database
