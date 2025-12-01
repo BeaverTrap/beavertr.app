@@ -12,6 +12,9 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "beavertr.app — Art, Web Design & Vibe Coding",
   description: "My space for art, web design, and coding projects. Always experimenting, always building.",
+  verification: {
+    google: "0XEjgCMr-4uKXcXgFHbNRorxXbvN907V91S2UYcjmxY",
+  },
 };
 
 export default function RootLayout({
