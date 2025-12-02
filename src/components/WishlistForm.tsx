@@ -148,6 +148,7 @@ export default function WishlistForm({ wishlistId, onItemAdded }: WishlistFormPr
       }
 
       // Add to wishlist with scraped data and affiliate URL if applicable
+      // Only include expected fields from scrapedData (exclude url, hasSizeOptions, etc.)
       const response = await fetch("/api/wishlist/items", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -155,13 +156,18 @@ export default function WishlistForm({ wishlistId, onItemAdded }: WishlistFormPr
           wishlistId,
           url: finalUrl,
           affiliateUrl: affiliateUrl,
+          title: scrapedData.title || undefined,
+          image: scrapedData.image || undefined,
+          price: scrapedData.price || undefined,
+          description: scrapedData.description || undefined,
           // Use scraped size if available, otherwise use manual input
           size: scrapedData.size || (size.trim() || null),
-          ...scrapedData,
         }),
       });
 
       if (response.ok) {
+        const data = await response.json();
+        console.log("Item added successfully:", data);
         setLink("");
         setSize("");
         if (onItemAdded) {
@@ -170,12 +176,23 @@ export default function WishlistForm({ wishlistId, onItemAdded }: WishlistFormPr
           window.location.reload();
         }
       } else {
-        const error = await response.json();
-        alert(error.error || "Failed to add item");
+        const errorText = await response.text();
+        console.error("Failed to add item:", {
+          status: response.status,
+          statusText: response.statusText,
+          errorText,
+        });
+        let error;
+        try {
+          error = JSON.parse(errorText);
+        } catch {
+          error = { error: errorText || "Failed to add item" };
+        }
+        alert(error.error || `Failed to add item (${response.status})`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error adding item:", error);
-      alert("Error adding item");
+      alert(`Error adding item: ${error.message || "Unknown error"}`);
     } finally {
       setLoading(false);
     }

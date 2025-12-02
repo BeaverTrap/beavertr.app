@@ -5,6 +5,8 @@ import { useSession } from "next-auth/react";
 import EditAffiliateLink from "./EditAffiliateLink";
 import EditItemDetails from "./EditItemDetails";
 import PurchaseProofModal from "./PurchaseProofModal";
+import ItemComments from "./ItemComments";
+import ItemReactions from "./ItemReactions";
 
 interface WishlistItem {
   id: string;
@@ -974,6 +976,12 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
               <span className="text-amber-400">ℹ️</span> This item contains an affiliate link. The wishlist creator will receive a commission if you purchase through this link.
             </div>
           )}
+
+          {/* Reactions */}
+          <ItemReactions itemId={item.id} />
+
+          {/* Comments */}
+          <ItemComments itemId={item.id} isOwner={isOwner} />
 
           {/* Actions */}
           <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-zinc-700">
