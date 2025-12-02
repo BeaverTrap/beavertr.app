@@ -177,8 +177,12 @@ export async function scrapeProductData(url: string) {
       throw new Error("URL is required");
     }
 
-    // Fetch the page with better headers for Amazon
+    // Fetch the page with better headers
     const isAmazon = url.includes("amazon.com") || url.includes("amzn.to");
+    const isShopify = url.includes("myshopify.com") || 
+                      url.includes("shopify.com") ||
+                      url.includes("thearcanelibrary.com") ||
+                      url.includes("collections/") && url.includes("/products/");
     
     // For Amazon, use Puppeteer to handle JavaScript-rendered content
     if (isAmazon) {
@@ -259,6 +263,151 @@ export async function scrapeProductData(url: string) {
       $('meta[name="twitter:description"]').attr("content") ||
       $('meta[name="description"]').attr("content") ||
       "";
+
+    // Shopify-specific extraction (Fangamer, etc.)
+    if (isShopify) {
+      console.log("Detected Shopify store, extracting product data...");
+      
+      let shopifyTitle = "";
+      let shopifyPrice = "";
+      let shopifyImage = "";
+      let shopifyDescription = "";
+      let shopifySize = "";
+      
+      // Try to extract from JSON-LD structured data (most reliable for Shopify)
+      $('script[type="application/ld+json"]').each((_, el) => {
+        try {
+          const jsonText = $(el).html() || "{}";
+          const json = JSON.parse(jsonText);
+          
+          // Handle array of JSON-LD objects
+          const productData = Array.isArray(json) 
+            ? json.find((item: any) => item['@type'] === 'Product')
+            : json['@type'] === 'Product' ? json : null;
+          
+          if (productData) {
+            if (!shopifyTitle && productData.name) shopifyTitle = productData.name;
+            if (!shopifyImage && productData.image) {
+              shopifyImage = Array.isArray(productData.image) 
+                ? productData.image[0] 
+                : typeof productData.image === 'string'
+                ? productData.image
+                : productData.image?.url || productData.image;
+            }
+            if (!shopifyDescription && productData.description) {
+              shopifyDescription = productData.description;
+            }
+            if (!shopifyPrice && productData.offers) {
+              const offer = Array.isArray(productData.offers) 
+                ? productData.offers[0] 
+                : productData.offers;
+              if (offer?.price) {
+                const currency = offer.priceCurrency || 'USD';
+                const priceValue = typeof offer.price === 'string' 
+                  ? offer.price 
+                  : offer.price.toString();
+                shopifyPrice = `$${priceValue}`;
+              }
+            }
+          }
+        } catch (e) {
+          // Ignore parse errors
+        }
+      });
+      
+      // Try Shopify-specific HTML selectors
+      if (!shopifyTitle) {
+        shopifyTitle = 
+          $('.product-title, .product__title, h1.product-title, h1.product__title').first().text().trim() ||
+          $('h1').first().text().trim() ||
+          "";
+      }
+      
+      if (!shopifyPrice) {
+        // Try various Shopify price selectors
+        const priceSelectors = [
+          '.product-price, .product__price',
+          '.price, .product-price__current',
+          '[data-product-price]',
+          '.money',
+          '.price-current, .price__current',
+        ];
+        
+        for (const selector of priceSelectors) {
+          const priceEl = $(selector).first();
+          if (priceEl.length) {
+            const priceText = priceEl.text().trim() || priceEl.attr('data-product-price') || priceEl.attr('content');
+            if (priceText) {
+              const priceMatch = priceText.match(/[\d,]+\.?\d{0,2}/);
+              if (priceMatch) {
+                shopifyPrice = `$${priceMatch[0]}`;
+                break;
+              }
+            }
+          }
+        }
+      }
+      
+      if (!shopifyImage) {
+        // Try Shopify image selectors
+        shopifyImage = 
+          $('.product-image img, .product__image img, .product-photos img').first().attr('src') ||
+          $('img[data-product-image]').first().attr('src') ||
+          $('.product-gallery img').first().attr('src') ||
+          "";
+        
+        // Handle relative URLs
+        if (shopifyImage && shopifyImage.startsWith('//')) {
+          shopifyImage = 'https:' + shopifyImage;
+        } else if (shopifyImage && shopifyImage.startsWith('/')) {
+          try {
+            const urlObj = new URL(url);
+            shopifyImage = urlObj.origin + shopifyImage;
+          } catch (e) {
+            // Ignore
+          }
+        }
+      }
+      
+      if (!shopifyDescription) {
+        shopifyDescription = 
+          $('.product-description, .product__description, .product-content').first().text().trim() ||
+          $('[data-product-description]').first().text().trim() ||
+          "";
+      }
+      
+      // Try to detect size options for clothing
+      const sizeSelectors = [
+        'select[name*="size"] option:selected',
+        'input[name*="size"]:checked',
+        '.product-option input[type="radio"]:checked',
+        '[data-option-name*="size"] input:checked',
+        '.variant-selector input:checked',
+      ];
+      
+      for (const selector of sizeSelectors) {
+        const sizeEl = $(selector).first();
+        if (sizeEl.length) {
+          const sizeText = sizeEl.attr('value') || sizeEl.text().trim() || sizeEl.attr('data-value');
+          if (sizeText && sizeText !== 'Select' && sizeText !== 'Choose') {
+            shopifySize = sizeText;
+            break;
+          }
+        }
+      }
+      
+      // If we got Shopify data, use it
+      if (shopifyTitle || shopifyPrice || shopifyImage) {
+        return {
+          title: shopifyTitle || title.trim() || "Product",
+          image: shopifyImage || image || "",
+          description: shopifyDescription || description.trim() || "",
+          price: shopifyPrice || "",
+          size: shopifySize || "",
+          url,
+        };
+      }
+    }
 
     // Amazon-specific extraction (Amazon pages are heavily JavaScript-rendered, but we can try)
     if (isAmazon) {
