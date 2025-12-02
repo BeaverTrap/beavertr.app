@@ -124,44 +124,31 @@ export async function addWishlistItem(
     const id = randomUUID();
     const now = new Date();
     
-    await db.insert(wishlistItems).values({
+    // Only set fields we're providing - let Drizzle use schema defaults for the rest
+    const insertData: any = {
       id,
       title: data.title,
       url: data.url,
-      affiliateUrl: data.affiliateUrl || null,
-      image: data.image || null,
-      price: data.price || null,
-      description: data.description || null,
-      priority: data.priority ?? 0,
-      notes: data.notes || null,
-      itemType: data.itemType || null,
-      category: data.category || null,
-      tags: data.tags || null,
-      size: data.size || null,
-      quantity: data.quantity || null,
-      // Explicitly set all fields with defaults to avoid issues
-      claimedBy: null,
-      purchasedBy: null,
-      claimStatus: 'none',
-      isClaimed: false,
-      isPurchased: false,
-      purchaseProof: null,
-      purchaseDate: null,
-      trackingNumber: null,
-      purchaseNotes: null,
-      purchaseAmount: null,
-      proofVerified: false,
-      proofRejected: false,
-      proofVerifiedAt: null,
-      proofVerifiedBy: null,
-      isAnonymous: false,
       wishlistId,
       userId,
-      displayOrder: 0,
-      priceHistory: null,
       createdAt: now,
       updatedAt: now,
-    });
+    };
+    
+    // Only add optional fields if they have values
+    if (data.affiliateUrl) insertData.affiliateUrl = data.affiliateUrl;
+    if (data.image) insertData.image = data.image;
+    if (data.price) insertData.price = data.price;
+    if (data.description) insertData.description = data.description;
+    if (data.priority !== undefined) insertData.priority = data.priority;
+    if (data.notes) insertData.notes = data.notes;
+    if (data.itemType) insertData.itemType = data.itemType;
+    if (data.category) insertData.category = data.category;
+    if (data.tags) insertData.tags = data.tags;
+    if (data.size) insertData.size = data.size;
+    if (data.quantity !== undefined) insertData.quantity = data.quantity;
+    
+    await db.insert(wishlistItems).values(insertData);
 
     const [item] = await db
       .select()
