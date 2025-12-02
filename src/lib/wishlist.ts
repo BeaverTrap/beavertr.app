@@ -124,8 +124,9 @@ export async function addWishlistItem(
     const id = randomUUID();
     const now = new Date();
     
-    // Only set fields we're providing - let Drizzle use schema defaults for the rest
-    const insertData: any = {
+    // Build a clean insert object - only include fields that have actual values
+    // This prevents Drizzle from trying to insert undefined/null in unexpected ways
+    const insertValues: Record<string, any> = {
       id,
       title: data.title,
       url: data.url,
@@ -135,20 +136,20 @@ export async function addWishlistItem(
       updatedAt: now,
     };
     
-    // Only add optional fields if they have values
-    if (data.affiliateUrl) insertData.affiliateUrl = data.affiliateUrl;
-    if (data.image) insertData.image = data.image;
-    if (data.price) insertData.price = data.price;
-    if (data.description) insertData.description = data.description;
-    if (data.priority !== undefined) insertData.priority = data.priority;
-    if (data.notes) insertData.notes = data.notes;
-    if (data.itemType) insertData.itemType = data.itemType;
-    if (data.category) insertData.category = data.category;
-    if (data.tags) insertData.tags = data.tags;
-    if (data.size) insertData.size = data.size;
-    if (data.quantity !== undefined) insertData.quantity = data.quantity;
+    // Only add optional fields if they have truthy values (not null, undefined, or empty string)
+    if (data.affiliateUrl) insertValues.affiliateUrl = data.affiliateUrl;
+    if (data.image) insertValues.image = data.image;
+    if (data.price) insertValues.price = data.price;
+    if (data.description) insertValues.description = data.description;
+    if (data.priority !== undefined && data.priority !== null) insertValues.priority = data.priority;
+    if (data.notes) insertValues.notes = data.notes;
+    if (data.itemType) insertValues.itemType = data.itemType;
+    if (data.category) insertValues.category = data.category;
+    if (data.tags) insertValues.tags = data.tags;
+    if (data.size) insertValues.size = data.size;
+    if (data.quantity !== undefined && data.quantity !== null) insertValues.quantity = data.quantity;
     
-    await db.insert(wishlistItems).values(insertData);
+    await db.insert(wishlistItems).values(insertValues);
 
     const [item] = await db
       .select()
