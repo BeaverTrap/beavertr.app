@@ -123,33 +123,115 @@ export async function addWishlistItem(
     
     const id = randomUUID();
     const now = new Date();
+    const timestamp = Math.floor(now.getTime() / 1000); // Unix timestamp in seconds
     
-    // Build a clean insert object - only include fields that have actual values
-    // This prevents Drizzle from trying to insert undefined/null in unexpected ways
-    const insertValues: Record<string, any> = {
-      id,
-      title: data.title,
-      url: data.url,
-      wishlistId,
-      userId,
-      createdAt: now,
-      updatedAt: now,
-    };
+    // Use raw SQL to have complete control over what gets inserted
+    // This avoids Drizzle trying to insert all columns with defaults
+    const databaseUrl = process.env.DATABASE_URL;
     
-    // Only add optional fields if they have truthy values (not null, undefined, or empty string)
-    if (data.affiliateUrl) insertValues.affiliateUrl = data.affiliateUrl;
-    if (data.image) insertValues.image = data.image;
-    if (data.price) insertValues.price = data.price;
-    if (data.description) insertValues.description = data.description;
-    if (data.priority !== undefined && data.priority !== null) insertValues.priority = data.priority;
-    if (data.notes) insertValues.notes = data.notes;
-    if (data.itemType) insertValues.itemType = data.itemType;
-    if (data.category) insertValues.category = data.category;
-    if (data.tags) insertValues.tags = data.tags;
-    if (data.size) insertValues.size = data.size;
-    if (data.quantity !== undefined && data.quantity !== null) insertValues.quantity = data.quantity;
-    
-    await db.insert(wishlistItems).values(insertValues);
+    if (databaseUrl && databaseUrl.startsWith('libsql://')) {
+      // Production: Use Turso/libSQL raw SQL
+      const { createClient } = await import('@libsql/client');
+      const client = createClient({
+        url: databaseUrl,
+        authToken: process.env.TURSO_AUTH_TOKEN!,
+      });
+      
+      // Build the SQL query with only the columns we want
+      const columns = ['id', 'title', 'url', 'wishlistId', 'userId', 'createdAt', 'updatedAt'];
+      const values = [id, data.title, data.url, wishlistId, userId, timestamp, timestamp];
+      const placeholders: string[] = [];
+      
+      if (data.affiliateUrl) {
+        columns.push('affiliateUrl');
+        values.push(data.affiliateUrl);
+        placeholders.push('?');
+      }
+      if (data.image) {
+        columns.push('image');
+        values.push(data.image);
+        placeholders.push('?');
+      }
+      if (data.price) {
+        columns.push('price');
+        values.push(data.price);
+        placeholders.push('?');
+      }
+      if (data.description) {
+        columns.push('description');
+        values.push(data.description);
+        placeholders.push('?');
+      }
+      if (data.priority !== undefined && data.priority !== null) {
+        columns.push('priority');
+        values.push(data.priority);
+        placeholders.push('?');
+      }
+      if (data.notes) {
+        columns.push('notes');
+        values.push(data.notes);
+        placeholders.push('?');
+      }
+      if (data.itemType) {
+        columns.push('itemType');
+        values.push(data.itemType);
+        placeholders.push('?');
+      }
+      if (data.category) {
+        columns.push('category');
+        values.push(data.category);
+        placeholders.push('?');
+      }
+      if (data.tags) {
+        columns.push('tags');
+        values.push(data.tags);
+        placeholders.push('?');
+      }
+      if (data.size) {
+        columns.push('size');
+        values.push(data.size);
+        placeholders.push('?');
+      }
+      if (data.quantity !== undefined && data.quantity !== null) {
+        columns.push('quantity');
+        values.push(data.quantity);
+        placeholders.push('?');
+      }
+      
+      const sqlQuery = `INSERT INTO wishlistItems (${columns.join(', ')}) VALUES (${columns.map(() => '?').join(', ')})`;
+      await client.execute({
+        sql: sqlQuery,
+        args: values,
+      });
+    } else {
+      // Development: Use better-sqlite3 raw SQL
+      // Get the underlying database instance from Drizzle
+      const Database = require('better-sqlite3');
+      const sqlite = new Database('./dev.db');
+      
+      try {
+        const columns = ['id', 'title', 'url', 'wishlistId', 'userId', 'createdAt', 'updatedAt'];
+        const values: any[] = [id, data.title, data.url, wishlistId, userId, timestamp, timestamp];
+        
+        if (data.affiliateUrl) { columns.push('affiliateUrl'); values.push(data.affiliateUrl); }
+        if (data.image) { columns.push('image'); values.push(data.image); }
+        if (data.price) { columns.push('price'); values.push(data.price); }
+        if (data.description) { columns.push('description'); values.push(data.description); }
+        if (data.priority !== undefined && data.priority !== null) { columns.push('priority'); values.push(data.priority); }
+        if (data.notes) { columns.push('notes'); values.push(data.notes); }
+        if (data.itemType) { columns.push('itemType'); values.push(data.itemType); }
+        if (data.category) { columns.push('category'); values.push(data.category); }
+        if (data.tags) { columns.push('tags'); values.push(data.tags); }
+        if (data.size) { columns.push('size'); values.push(data.size); }
+        if (data.quantity !== undefined && data.quantity !== null) { columns.push('quantity'); values.push(data.quantity); }
+        
+        const sqlQuery = `INSERT INTO wishlistItems (${columns.join(', ')}) VALUES (${columns.map(() => '?').join(', ')})`;
+        sqlite.prepare(sqlQuery).run(...values);
+      } finally {
+        // Don't close - let the connection pool handle it
+        // sqlite.close();
+      }
+    }
 
     const [item] = await db
       .select()
