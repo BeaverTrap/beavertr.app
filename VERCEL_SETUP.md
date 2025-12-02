@@ -10,6 +10,7 @@ In the Vercel project setup screen, expand **"Environment Variables"** and add t
 - `NEXTAUTH_URL` = `https://your-app.vercel.app` (or your custom domain after setup)
 - `NEXTAUTH_SECRET` = (copy from your `.env.local` file)
 - `DATABASE_URL` = (see Database Setup section below)
+- `BLOB_READ_WRITE_TOKEN` = (see Blob Storage Setup section below)
 
 #### OAuth Provider Variables:
 - `GOOGLE_CLIENT_ID` = (copy from your `.env.local`)
@@ -48,6 +49,30 @@ Turso provides SQLite in the cloud, so you can keep using the same database stru
    **Your Database URL:** `libsql://beavertr-app-beavertrap.aws-us-west-2.turso.io`
    
    **Note:** Your auth token should be kept secure. Copy it from the Turso dashboard when setting up Vercel environment variables.
+
+---
+
+## Blob Storage Setup (For File Uploads)
+
+**File uploads don't work on Vercel** because the file system is read-only. You need Vercel Blob Storage for avatar uploads.
+
+1. **Enable Blob Storage in Vercel:**
+   - Go to your Vercel project dashboard
+   - Navigate to **Settings** → **Storage**
+   - Click **"Create Database"** or **"Add Storage"**
+   - Select **"Blob"** as the storage type
+   - Name it (e.g., `beavertr-blob`)
+
+2. **Get your Blob token:**
+   - After creating the Blob storage, go to **Settings** → **Storage** → Your Blob storage
+   - Click on **"Environment Variables"** or **"Tokens"**
+   - Copy the `BLOB_READ_WRITE_TOKEN`
+
+3. **Add to Vercel Environment Variables:**
+   - In your Vercel project, go to **Settings** → **Environment Variables**
+   - Add: `BLOB_READ_WRITE_TOKEN` = (paste the token from step 2)
+
+**Note:** The token is automatically available in your Vercel deployments, but you may need to add it manually if you're using it in local development.
 
 **Turso CLI (Optional):**
 ```bash

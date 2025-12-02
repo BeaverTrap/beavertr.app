@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import CustomItemForm from "./CustomItemForm";
 
 interface WishlistFormProps {
   wishlistId: string;
@@ -12,8 +13,8 @@ export default function WishlistForm({ wishlistId, onItemAdded }: WishlistFormPr
   const [link, setLink] = useState("");
   const [loading, setLoading] = useState(false);
   const [userAffiliateTag, setUserAffiliateTag] = useState<string | null>(null);
-  const [itemType, setItemType] = useState<string>("");
   const [size, setSize] = useState<string>("");
+  const [showCustomForm, setShowCustomForm] = useState(false);
   const { data: session } = useSession();
 
   // Fetch user's affiliate tag on mount
@@ -111,10 +112,15 @@ export default function WishlistForm({ wishlistId, onItemAdded }: WishlistFormPr
         body: JSON.stringify({ url: finalUrl }),
       });
 
-      let scrapedData = {};
+      let scrapedData: any = {};
       if (scrapeResponse.ok) {
         scrapedData = await scrapeResponse.json();
         console.log("Scraped data received:", scrapedData);
+        
+        // Auto-fill size if scraped data has it
+        if (scrapedData.size) {
+          setSize(scrapedData.size);
+        }
       } else {
         const errorData = await scrapeResponse.json().catch(() => ({}));
         console.error("Scrape failed:", errorData);
@@ -123,6 +129,24 @@ export default function WishlistForm({ wishlistId, onItemAdded }: WishlistFormPr
         return;
       }
       
+      // Check for duplicates before adding
+      const checkDuplicateResponse = await fetch(`/api/wishlist/items?wishlistId=${wishlistId}`);
+      if (checkDuplicateResponse.ok) {
+        const existingItems = await checkDuplicateResponse.json();
+        const normalizedUrl = finalUrl.split('?')[0].split('#')[0].toLowerCase().trim();
+        const duplicate = existingItems.find((item: any) => {
+          const existingUrl = (item.url || '').split('?')[0].split('#')[0].toLowerCase().trim();
+          return existingUrl === normalizedUrl;
+        });
+        
+        if (duplicate) {
+          if (!confirm(`This item already exists in your wishlist:\n"${duplicate.title}"\n\nAdd it anyway?`)) {
+            setLoading(false);
+            return;
+          }
+        }
+      }
+
       // Add to wishlist with scraped data and affiliate URL if applicable
       const response = await fetch("/api/wishlist/items", {
         method: "POST",
@@ -131,15 +155,14 @@ export default function WishlistForm({ wishlistId, onItemAdded }: WishlistFormPr
           wishlistId,
           url: finalUrl,
           affiliateUrl: affiliateUrl,
-          itemType: itemType || null,
-          size: size.trim() || null,
+          // Use scraped size if available, otherwise use manual input
+          size: scrapedData.size || (size.trim() || null),
           ...scrapedData,
         }),
       });
 
       if (response.ok) {
         setLink("");
-        setItemType("");
         setSize("");
         if (onItemAdded) {
           onItemAdded();
@@ -168,6 +191,27 @@ export default function WishlistForm({ wishlistId, onItemAdded }: WishlistFormPr
 
   return (
     <div className="mb-8">
+      {showCustomForm && (
+        <CustomItemForm
+          wishlistId={wishlistId}
+          onItemAdded={onItemAdded}
+          onClose={() => setShowCustomForm(false)}
+        />
+      )}
+      
+      <div className="flex gap-3 mb-4">
+        <button
+          type="button"
+          onClick={() => setShowCustomForm(true)}
+          className="px-4 py-2 rounded-xl bg-zinc-700/80 hover:bg-zinc-600/80 text-white transition-colors"
+        >
+          + Add Custom Item
+        </button>
+        <div className="flex-1 border-t border-zinc-700/50 my-auto"></div>
+        <span className="text-sm text-zinc-400 my-auto">or</span>
+        <div className="flex-1 border-t border-zinc-700/50 my-auto"></div>
+      </div>
+
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="relative group">
           <label className="block text-sm font-medium text-zinc-300 mb-2">
@@ -210,29 +254,11 @@ export default function WishlistForm({ wishlistId, onItemAdded }: WishlistFormPr
           </div>
         </div>
 
-        {/* Item Type and Size Fields */}
-        <div className="grid grid-cols-2 gap-3">
+        {/* Size Field - Only show if size was auto-detected or user wants to add */}
+        {size && (
           <div>
             <label className="block text-sm font-medium text-zinc-300 mb-2">
-              Item Type (Optional)
-            </label>
-            <select
-              value={itemType}
-              onChange={(e) => setItemType(e.target.value)}
-              className="w-full px-4 py-2 rounded-xl bg-zinc-800/80 border border-zinc-700/50 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
-              disabled={loading}
-            >
-              <option value="">Select type...</option>
-              <option value="clothing">👕 Clothing</option>
-              <option value="shoes">👟 Shoes</option>
-              <option value="hat">🧢 Hat</option>
-              <option value="accessories">💍 Accessories</option>
-              <option value="other">📦 Other</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-zinc-300 mb-2">
-              Size (Optional)
+              Size (auto-detected)
             </label>
             <input
               type="text"
@@ -243,7 +269,7 @@ export default function WishlistForm({ wishlistId, onItemAdded }: WishlistFormPr
               disabled={loading}
             />
           </div>
-        </div>
+        )}
       </form>
     </div>
   );

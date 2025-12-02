@@ -1,5 +1,5 @@
 import { db } from './db';
-import { wishlistItems, wishlists, friendships } from './schema';
+import { wishlistItems, wishlists, friendships, priceAlerts } from './schema';
 import { eq, desc, and, or } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 
@@ -59,7 +59,7 @@ export async function getWishlistItems(wishlistId: string) {
     .select()
     .from(wishlistItems)
     .where(eq(wishlistItems.wishlistId, wishlistId))
-    .orderBy(desc(wishlistItems.priority), desc(wishlistItems.createdAt));
+    .orderBy(wishlistItems.displayOrder, desc(wishlistItems.priority), desc(wishlistItems.createdAt));
 }
 
 export async function addWishlistItem(
@@ -75,6 +75,8 @@ export async function addWishlistItem(
     priority?: number;
     notes?: string;
     itemType?: string;
+    category?: string;
+    tags?: string;
     size?: string;
     quantity?: number;
   }
@@ -93,6 +95,8 @@ export async function addWishlistItem(
     priority: data.priority || 0,
     notes: data.notes || null,
     itemType: data.itemType || null,
+    category: data.category || null,
+    tags: data.tags || null,
     size: data.size || null,
     quantity: data.quantity || null,
     wishlistId,
@@ -121,6 +125,8 @@ export async function updateWishlistItem(
     priority?: number;
     notes?: string;
     itemType?: string;
+    category?: string;
+    tags?: string;
     size?: string;
     quantity?: number;
     affiliateUrl?: string;
@@ -128,10 +134,38 @@ export async function updateWishlistItem(
 ) {
   const now = new Date();
   
+  // If price is being updated, track price history
+  let priceHistoryUpdate = undefined;
+  if (data.price !== undefined) {
+    const [currentItem] = await db
+      .select()
+      .from(wishlistItems)
+      .where(eq(wishlistItems.id, id))
+      .limit(1);
+    
+    if (currentItem) {
+      const currentPrice = currentItem.price;
+      const newPrice = data.price;
+      
+      // Only track if price actually changed
+      if (currentPrice !== newPrice && newPrice) {
+        const history = currentItem.priceHistory ? JSON.parse(currentItem.priceHistory) : [];
+        history.push({
+          price: newPrice,
+          date: now.getTime(),
+        });
+        // Keep only last 30 price points
+        const trimmedHistory = history.slice(-30);
+        priceHistoryUpdate = JSON.stringify(trimmedHistory);
+      }
+    }
+  }
+  
   await db
     .update(wishlistItems)
     .set({
       ...data,
+      priceHistory: priceHistoryUpdate !== undefined ? priceHistoryUpdate : undefined,
       updatedAt: now,
     })
     .where(and(eq(wishlistItems.id, id), eq(wishlistItems.userId, userId)));
@@ -142,7 +176,82 @@ export async function updateWishlistItem(
     .where(eq(wishlistItems.id, id))
     .limit(1);
   
+  // Check price alerts if price changed
+  if (data.price !== undefined && item) {
+    await checkPriceAlerts(item.id, item.price);
+  }
+  
   return item;
+}
+
+// Helper function to parse price string to number
+function parsePrice(priceStr: string | null | undefined): number | null {
+  if (!priceStr) return null;
+  const cleaned = priceStr.replace(/[^0-9.]/g, '');
+  const num = parseFloat(cleaned);
+  return isNaN(num) ? null : num;
+}
+
+// Check price alerts and trigger notifications if conditions are met
+export async function checkPriceAlerts(itemId: string, currentPrice: string | null) {
+  if (!currentPrice) return;
+  
+  const currentPriceNum = parsePrice(currentPrice);
+  if (currentPriceNum === null) return;
+  
+  // Get all active alerts for this item
+  const alerts = await db
+    .select()
+    .from(priceAlerts)
+    .where(and(eq(priceAlerts.itemId, itemId), eq(priceAlerts.isActive, true)));
+  
+  // Get the item to check price history
+  const [item] = await db
+    .select()
+    .from(wishlistItems)
+    .where(eq(wishlistItems.id, itemId))
+    .limit(1);
+  
+  if (!item) return;
+  
+  // Get previous price from history
+  const history = item.priceHistory ? JSON.parse(item.priceHistory) : [];
+  const previousPriceEntry = history.length > 1 ? history[history.length - 2] : null;
+  const previousPriceNum = previousPriceEntry ? parsePrice(previousPriceEntry.price) : null;
+  
+  for (const alert of alerts) {
+    let shouldNotify = false;
+    
+    // Check target price alert
+    if (alert.targetPrice) {
+      const targetPriceNum = parsePrice(alert.targetPrice);
+      if (targetPriceNum !== null && currentPriceNum <= targetPriceNum) {
+        shouldNotify = true;
+      }
+    }
+    
+    // Check percent drop alert
+    if (alert.percentDrop && previousPriceNum !== null) {
+      const percentChange = ((previousPriceNum - currentPriceNum) / previousPriceNum) * 100;
+      if (percentChange >= alert.percentDrop) {
+        shouldNotify = true;
+      }
+    }
+    
+    if (shouldNotify) {
+      // Update last notified time
+      await db
+        .update(priceAlerts)
+        .set({
+          lastNotifiedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(priceAlerts.id, alert.id));
+      
+      // TODO: Send email notification (will be implemented in email notification system)
+      console.log(`Price alert triggered for item ${itemId}, alert ${alert.id}`);
+    }
+  }
 }
 
 export async function deleteWishlistItem(userId: string, id: string): Promise<boolean> {
@@ -383,5 +492,97 @@ export async function confirmClaim(itemId: string, ownerId: string, confirm: boo
       })
       .where(eq(wishlistItems.id, itemId));
   }
+}
+
+// Price Alert Functions
+export async function createPriceAlert(
+  itemId: string,
+  userId: string,
+  data: {
+    targetPrice?: string;
+    percentDrop?: number;
+  }
+) {
+  const id = randomUUID();
+  const now = new Date();
+  
+  await db.insert(priceAlerts).values({
+    id,
+    itemId,
+    userId,
+    targetPrice: data.targetPrice || null,
+    percentDrop: data.percentDrop || null,
+    isActive: true,
+    createdAt: now,
+    updatedAt: now,
+  });
+  
+  const [alert] = await db
+    .select()
+    .from(priceAlerts)
+    .where(eq(priceAlerts.id, id))
+    .limit(1);
+  
+  return alert;
+}
+
+export async function getPriceAlerts(itemId: string, userId?: string) {
+  const conditions = [eq(priceAlerts.itemId, itemId)];
+  if (userId) {
+    conditions.push(eq(priceAlerts.userId, userId));
+  }
+  
+  return await db
+    .select()
+    .from(priceAlerts)
+    .where(and(...conditions))
+    .orderBy(desc(priceAlerts.createdAt));
+}
+
+export async function updatePriceAlert(
+  alertId: string,
+  userId: string,
+  data: {
+    targetPrice?: string | null;
+    percentDrop?: number | null;
+    isActive?: boolean;
+  }
+) {
+  const now = new Date();
+  
+  // Verify ownership
+  const [alert] = await db
+    .select()
+    .from(priceAlerts)
+    .where(and(eq(priceAlerts.id, alertId), eq(priceAlerts.userId, userId)))
+    .limit(1);
+  
+  if (!alert) {
+    throw new Error("Alert not found or unauthorized");
+  }
+  
+  await db
+    .update(priceAlerts)
+    .set({
+      ...data,
+      updatedAt: now,
+    })
+    .where(eq(priceAlerts.id, alertId));
+  
+  const [updatedAlert] = await db
+    .select()
+    .from(priceAlerts)
+    .where(eq(priceAlerts.id, alertId))
+    .limit(1);
+  
+  return updatedAlert;
+}
+
+export async function deletePriceAlert(alertId: string, userId: string) {
+  const result = await db
+    .delete(priceAlerts)
+    .where(and(eq(priceAlerts.id, alertId), eq(priceAlerts.userId, userId)));
+  
+  return (result as any).changes > 0;
 }
 

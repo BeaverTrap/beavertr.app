@@ -10,10 +10,13 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
-    "db:add-itemtype": "node scripts/add-itemtype-column.js"
+    "db:add-itemtype": "node scripts/add-itemtype-column.js",
+    "db:add-category": "node scripts/add-category-column.js",
+    "db:add-displayorder": "node scripts/add-displayorder-column.js"
   },
   "dependencies": {
     "@libsql/client": "^0.15.15",
+    "@vercel/blob": "^2.0.0",
     "better-sqlite3": "^12.4.6",
     "cheerio": "^1.1.2",
     "drizzle-kit": "^0.31.7",

@@ -11,8 +11,21 @@
   --font-sans: var(--font-inter);
 }
 
+/* Dark theme (default) */
+:root.dark,
+:root {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+}
+
+/* Light theme */
+:root.light {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not(.light) {
     --background: #0a0a0a;
     --foreground: #ededed;
   }

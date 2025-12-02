@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import WishlistForm from "@/components/WishlistForm";
 import WishlistList from "@/components/WishlistList";
+import WishlistAnalytics from "@/components/WishlistAnalytics";
 import AuthButton from "@/components/AuthButton";
 import WishlistInstructions from "@/components/WishlistInstructions";
 import CreateWishlistModal from "@/components/CreateWishlistModal";
@@ -29,6 +30,7 @@ export default function WishlistDashboard() {
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingIconWishlistId, setEditingIconWishlistId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"items" | "analytics">("items");
 
   useEffect(() => {
     fetchWishlists();
@@ -165,6 +167,7 @@ function WishlistContent({ wishlistId, wishlists }: { wishlistId: string; wishli
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showIconPicker, setShowIconPicker] = useState(false);
+  const [activeTab, setActiveTab] = useState<"items" | "analytics">("items");
   const { data: session } = useSession();
   
   const wishlist = wishlists.find(w => w.id === wishlistId);
@@ -312,11 +315,36 @@ function WishlistContent({ wishlistId, wishlists }: { wishlistId: string; wishli
         />
       )}
 
-      {/* Share Link Section - Hidden for personal wishlists */}
-      {shareUrl && wishlist?.privacy !== "personal" && (
-        <div className="mb-6 p-6 rounded-2xl bg-gradient-to-br from-zinc-800/50 to-zinc-900/50 border border-zinc-700/50 backdrop-blur-sm">
-          <div className="space-y-5">
-            {/* Share Link */}
+      {/* Share Link and Export Section */}
+      <div className="mb-6 p-6 rounded-2xl bg-gradient-to-br from-zinc-800/50 to-zinc-900/50 border border-zinc-700/50 backdrop-blur-sm">
+        <div className="space-y-5">
+          {/* Export Buttons */}
+          {session?.user?.id && wishlist && (
+            <div>
+              <label className="block text-sm font-semibold text-zinc-300 mb-2">
+                Export Wishlist
+              </label>
+              <div className="flex gap-3">
+                <a
+                  href={`/api/wishlist/export?wishlistId=${wishlistId}&format=csv`}
+                  download
+                  className="px-4 py-2 rounded-xl bg-green-600/80 hover:bg-green-600 text-white transition-colors"
+                >
+                  📥 Export CSV
+                </a>
+                <a
+                  href={`/api/wishlist/export?wishlistId=${wishlistId}&format=json`}
+                  download
+                  className="px-4 py-2 rounded-xl bg-blue-600/80 hover:bg-blue-600 text-white transition-colors"
+                >
+                  📥 Export JSON
+                </a>
+              </div>
+            </div>
+          )}
+
+          {/* Share Link - Hidden for personal wishlists */}
+          {shareUrl && wishlist?.privacy !== "personal" && (
             <div>
               <label className="block text-sm font-semibold text-zinc-300 mb-2">
                 Share Link
@@ -350,9 +378,10 @@ function WishlistContent({ wishlistId, wishlists }: { wishlistId: string; wishli
                 </div>
               )}
             </div>
+          )}
             
-            {/* Actions */}
-            <div className="flex items-center justify-between pt-4 border-t border-zinc-700/50">
+          {/* Actions */}
+          <div className="flex items-center justify-between pt-4 border-t border-zinc-700/50">
               <div className="flex gap-3">
                 <button
                   onClick={handleRename}
@@ -416,7 +445,6 @@ function WishlistContent({ wishlistId, wishlists }: { wishlistId: string; wishli
             </div>
           </div>
         </div>
-      )}
       
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
@@ -447,10 +475,40 @@ function WishlistContent({ wishlistId, wishlists }: { wishlistId: string; wishli
         </div>
       )}
       
-      <WishlistForm wishlistId={wishlistId} onItemAdded={() => setRefreshKey(k => k + 1)} />
-      <div className="mt-8">
-        <WishlistList key={refreshKey} wishlistId={wishlistId} isOwner={true} />
+      {/* Tabs */}
+      <div className="mb-6 flex gap-2 border-b border-zinc-700/50">
+        <button
+          onClick={() => setActiveTab("items")}
+          className={`px-4 py-2 font-medium transition-colors ${
+            activeTab === "items"
+              ? "text-white border-b-2 border-blue-500"
+              : "text-zinc-400 hover:text-white"
+          }`}
+        >
+          Items
+        </button>
+        <button
+          onClick={() => setActiveTab("analytics")}
+          className={`px-4 py-2 font-medium transition-colors ${
+            activeTab === "analytics"
+              ? "text-white border-b-2 border-blue-500"
+              : "text-zinc-400 hover:text-white"
+          }`}
+        >
+          Analytics
+        </button>
       </div>
+
+      {activeTab === "items" ? (
+        <>
+          <WishlistForm wishlistId={wishlistId} onItemAdded={() => setRefreshKey(k => k + 1)} />
+          <div className="mt-8">
+            <WishlistList key={refreshKey} wishlistId={wishlistId} isOwner={true} />
+          </div>
+        </>
+      ) : (
+        <WishlistAnalytics wishlistId={wishlistId} />
+      )}
       
       <WishlistInstructions />
     </div>

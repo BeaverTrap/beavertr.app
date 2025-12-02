@@ -1,14 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import PriceAlertManager from "./PriceAlertManager";
 
 interface EditItemDetailsProps {
   item: {
     id: string;
     notes?: string | null;
-    itemType?: string | null;
+    category?: string | null;
     size?: string | null;
     quantity?: number | null;
+    price?: string | null;
+    priceHistory?: string | null;
   };
   onUpdate: () => void;
 }
@@ -16,10 +19,16 @@ interface EditItemDetailsProps {
 export default function EditItemDetails({ item, onUpdate }: EditItemDetailsProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [notes, setNotes] = useState(item.notes || "");
-  const [itemType, setItemType] = useState(item.itemType || "");
+  const [category, setCategory] = useState(item.category || "");
   const [size, setSize] = useState(item.size || "");
   const [quantity, setQuantity] = useState(item.quantity?.toString() || "");
   const [loading, setLoading] = useState(false);
+  
+  const commonCategories = [
+    "Electronics", "Clothing", "Books", "Home & Kitchen", "Toys & Games",
+    "Sports & Outdoors", "Beauty & Personal Care", "Automotive", "Food & Beverages",
+    "Health & Wellness", "Office Supplies", "Pet Supplies", "Travel", "Other"
+  ];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,7 +41,7 @@ export default function EditItemDetails({ item, onUpdate }: EditItemDetailsProps
         body: JSON.stringify({
           id: item.id,
           notes: notes.trim() || null,
-          itemType: itemType || null,
+          category: category.trim() || null,
           size: size.trim() || null,
           quantity: quantity ? parseInt(quantity) : null,
         }),
@@ -58,7 +67,7 @@ export default function EditItemDetails({ item, onUpdate }: EditItemDetailsProps
       <button
         onClick={() => setIsOpen(true)}
         className="text-xs px-2 py-1 rounded bg-zinc-700/50 hover:bg-zinc-700 text-zinc-300 whitespace-nowrap"
-        title="Edit notes, type, size, quantity"
+        title="Edit notes, size, quantity"
       >
         ✏️ Edit Details
       </button>
@@ -83,19 +92,24 @@ export default function EditItemDetails({ item, onUpdate }: EditItemDetailsProps
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Item Type</label>
+            <label className="block text-sm font-medium mb-2">Category</label>
             <select
-              value={itemType}
-              onChange={(e) => setItemType(e.target.value)}
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
               className="w-full px-3 py-2 rounded bg-zinc-900 border border-zinc-700 text-white"
             >
-              <option value="">Select type...</option>
-              <option value="clothing">👕 Clothing</option>
-              <option value="shoes">👟 Shoes</option>
-              <option value="hat">🧢 Hat</option>
-              <option value="accessories">💍 Accessories</option>
-              <option value="other">📦 Other</option>
+              <option value="">Select category...</option>
+              {commonCategories.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
             </select>
+            <input
+              type="text"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              placeholder="Or type custom category"
+              className="w-full mt-2 px-3 py-2 rounded bg-zinc-900 border border-zinc-700 text-white placeholder-zinc-500"
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -123,13 +137,19 @@ export default function EditItemDetails({ item, onUpdate }: EditItemDetailsProps
             </div>
           </div>
 
+          <PriceAlertManager
+            itemId={item.id}
+            currentPrice={item.price || null}
+            priceHistory={item.priceHistory || null}
+          />
+
           <div className="flex gap-2 justify-end">
             <button
               type="button"
               onClick={() => {
                 setIsOpen(false);
                 setNotes(item.notes || "");
-                setItemType(item.itemType || "");
+                setCategory(item.category || "");
                 setSize(item.size || "");
                 setQuantity(item.quantity?.toString() || "");
               }}

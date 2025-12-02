@@ -67,6 +67,8 @@ export const wishlistItems = sqliteTable('wishlistItems', {
   priority: integer('priority').default(0), // 0 = normal, 1 = high, -1 = low
   notes: text('notes'),
   itemType: text('itemType'), // Type of item: 'clothing', 'shoes', 'hat', 'accessories', 'other', null
+  category: text('category'), // Category/tag for organizing items (e.g., "Electronics", "Clothing", "Books")
+  tags: text('tags'), // JSON array of tags for additional categorization
   size: text('size'), // Size (e.g., "Large", "XL", "10")
   quantity: integer('quantity'), // Quantity desired
   claimedBy: text('claimedBy'), // userId who claimed it
@@ -86,6 +88,20 @@ export const wishlistItems = sqliteTable('wishlistItems', {
   isAnonymous: integer('isAnonymous', { mode: 'boolean' }).default(false), // Purchase is anonymous (don't show buyer name)
   wishlistId: text('wishlistId').notNull().references(() => wishlists.id, { onDelete: 'cascade' }),
   userId: text('userId').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  displayOrder: integer('displayOrder').default(0), // Order for drag-and-drop reordering
+  priceHistory: text('priceHistory'), // JSON array of { price: string, date: timestamp }
+  createdAt: integer('createdAt', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer('updatedAt', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+});
+
+export const priceAlerts = sqliteTable('priceAlerts', {
+  id: text('id').primaryKey(),
+  itemId: text('itemId').notNull().references(() => wishlistItems.id, { onDelete: 'cascade' }),
+  userId: text('userId').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  targetPrice: text('targetPrice'), // Alert when price drops to this amount or below
+  percentDrop: integer('percentDrop'), // Alert when price drops by this percentage (e.g., 20 for 20%)
+  isActive: integer('isActive', { mode: 'boolean' }).default(true),
+  lastNotifiedAt: integer('lastNotifiedAt', { mode: 'timestamp' }), // Last time alert was triggered
   createdAt: integer('createdAt', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
   updatedAt: integer('updatedAt', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
@@ -100,5 +116,25 @@ export const friendships = sqliteTable('friendships', {
   updatedAt: integer('updatedAt', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 }, (table) => ({
   uniqueUserFriend: unique().on(table.userId, table.friendId),
+}));
+
+export const comments = sqliteTable('comments', {
+  id: text('id').primaryKey(),
+  itemId: text('itemId').notNull().references(() => wishlistItems.id, { onDelete: 'cascade' }),
+  userId: text('userId').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  content: text('content').notNull(),
+  parentId: text('parentId'), // For nested/reply comments
+  createdAt: integer('createdAt', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer('updatedAt', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+});
+
+export const reactions = sqliteTable('reactions', {
+  id: text('id').primaryKey(),
+  itemId: text('itemId').notNull().references(() => wishlistItems.id, { onDelete: 'cascade' }),
+  userId: text('userId').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  type: text('type').notNull(), // 'like', 'love', 'want', 'helpful', etc.
+  createdAt: integer('createdAt', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+  uniqueUserItemReaction: unique().on(table.userId, table.itemId, table.type),
 }));
 

@@ -9,9 +9,10 @@ interface ImageCropperProps {
   originalFile?: File;
   onCropComplete: (croppedImage: string, mimeType: string) => void;
   onCancel: () => void;
+  uploading?: boolean;
 }
 
-export default function ImageCropper({ image, originalFile, onCropComplete, onCancel }: ImageCropperProps) {
+export default function ImageCropper({ image, originalFile, onCropComplete, onCancel, uploading = false }: ImageCropperProps) {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
@@ -341,17 +342,23 @@ export default function ImageCropper({ image, originalFile, onCropComplete, onCa
         try {
           console.log('Attempting animated GIF processing...');
           result = await getCroppedGif(originalFile, croppedAreaPixels);
+          console.log('Animated GIF processing successful');
         } catch (gifError: any) {
           console.warn('Animated GIF processing failed, falling back to static crop:', gifError);
           // Fallback to static crop if animated processing fails
-          alert('Could not preserve animation. Cropping as static GIF instead.');
+          // Don't use alert here as it blocks execution - just log and continue
+          console.log('Falling back to static crop...');
           result = await getCroppedImg(image, croppedAreaPixels, mimeType);
+          console.log('Static crop successful');
         }
       } else {
         // Regular image processing
+        console.log('Processing regular image...');
         result = await getCroppedImg(image, croppedAreaPixels, mimeType);
+        console.log('Image processing successful');
       }
       
+      console.log('Calling onCropComplete with URL:', result.url.substring(0, 50) + '...');
       onCropComplete(result.url, result.mimeType);
     } catch (error: any) {
       console.error("Error cropping image:", error);
@@ -374,6 +381,11 @@ export default function ImageCropper({ image, originalFile, onCropComplete, onCa
           {processingGif && (
             <p className="text-sm text-blue-400 mt-2">
               ⏳ Processing animated GIF frames... This may take a moment.
+            </p>
+          )}
+          {uploading && (
+            <p className="text-sm text-green-400 mt-2">
+              ⬆️ Uploading image... Please wait.
             </p>
           )}
         </div>
@@ -411,17 +423,17 @@ export default function ImageCropper({ image, originalFile, onCropComplete, onCa
           <div className="flex gap-4">
             <button
               onClick={onCancel}
-              disabled={processingGif}
+              disabled={processingGif || uploading}
               className="flex-1 px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancel
             </button>
             <button
               onClick={handleSave}
-              disabled={processingGif}
+              disabled={processingGif || uploading}
               className="flex-1 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {processingGif ? "Processing GIF..." : isGif ? "Crop (Preserves Animation)" : "Save Cropped Image"}
+              {uploading ? "Uploading..." : processingGif ? "Processing GIF..." : isGif ? "Crop (Preserves Animation)" : "Save Cropped Image"}
             </button>
           </div>
         </div>

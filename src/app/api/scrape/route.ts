@@ -112,7 +112,57 @@ async function scrapeAmazonWithPuppeteer(url: string) {
                           getText('#feature-bullets') ||
                           '';
       
-      return { title, price, image: parsedImage, description };
+      // Try to extract size - look for size selection or size in title/description
+      let size = '';
+      
+      // Check if there's a size selector (common on clothing/shoes/hats)
+      const sizeSelectors = [
+        '#native_dropdown_selected_size_name',
+        '#size_name',
+        '.a-button-selected[data-csa-c-content-id*="size"]',
+        '#variation_size_name .a-button-selected',
+        '#size_name_0',
+        '[data-csa-c-content-id*="size"] .a-button-selected',
+        '.a-dropdown-container select[name*="size"] option:checked'
+      ];
+      
+      for (const selector of sizeSelectors) {
+        const sizeEl = document.querySelector(selector);
+        if (sizeEl) {
+          const sizeText = sizeEl.textContent?.trim() || sizeEl.getAttribute('value') || '';
+          if (sizeText && sizeText !== 'Select' && sizeText !== 'Choose') {
+            size = sizeText;
+            break;
+          }
+        }
+      }
+      
+      // Check dropdown for selected size
+      if (!size) {
+        const sizeDropdown = document.querySelector('select[name*="size"], select[id*="size"]') as HTMLSelectElement;
+        if (sizeDropdown && sizeDropdown.selectedIndex > 0) {
+          const selectedOption = sizeDropdown.options[sizeDropdown.selectedIndex];
+          if (selectedOption && selectedOption.value && selectedOption.value !== '') {
+            size = selectedOption.text.trim();
+          }
+        }
+      }
+      
+      // Check if size options exist (indicates item has sizes)
+      const hasSizeOptions = document.querySelector('#variation_size_name, #size_name, [data-csa-c-content-id*="size"]') !== null;
+      
+      // Try to extract from title (e.g., "T-Shirt - Large", "Shoes Size 10")
+      if (!size) {
+        const titleText = title.toLowerCase();
+        const sizeMatch = titleText.match(/\b(size|sz)[:\s]*([a-z0-9]+)\b/i) || 
+                         titleText.match(/\b(xs|s|m|l|xl|xxl|xxxl|2xl|3xl|4xl|5xl)\b/i) ||
+                         titleText.match(/\b(\d+)\s*(?:inch|in|cm|mm)\b/i);
+        if (sizeMatch) {
+          size = sizeMatch[2] || sizeMatch[1] || sizeMatch[0];
+        }
+      }
+      
+      return { title, price, image: parsedImage, description, size, hasSizeOptions };
     });
     
     return data;
@@ -143,6 +193,8 @@ export async function scrapeProductData(url: string) {
             image: amazonData.image || "",
             description: amazonData.description || "Product from Amazon",
             price: amazonData.price || "",
+            size: amazonData.size || "",
+            hasSizeOptions: amazonData.hasSizeOptions || false,
             url,
           };
         }

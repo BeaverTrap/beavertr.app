@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { wishlistId, url, affiliateUrl, title, image, price, description, priority, notes, itemType, size, quantity } = await request.json();
+  const { wishlistId, url, affiliateUrl, title, image, price, description, priority, notes, itemType, category, tags, size, quantity } = await request.json();
 
   if (!wishlistId || !url) {
     return NextResponse.json(
@@ -45,6 +45,8 @@ export async function POST(request: Request) {
     priority,
     notes,
     itemType,
+    category,
+    tags,
     size,
     quantity,
   });

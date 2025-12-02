@@ -44,6 +44,7 @@ export default function ProfilePage() {
   const [isOwnProfile, setIsOwnProfile] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [showCropper, setShowCropper] = useState(false);
   const [imageToCrop, setImageToCrop] = useState<string | null>(null);
   const [fileToCrop, setFileToCrop] = useState<File | null>(null);
@@ -707,38 +708,72 @@ export default function ProfilePage() {
         <ImageCropper
           image={imageToCrop}
           originalFile={fileToCrop || undefined}
+          uploading={uploadingAvatar}
           onCropComplete={async (croppedImageUrl, mimeType) => {
+            setUploadingAvatar(true);
             try {
-              const response = await fetch(croppedImageUrl);
-              const blob = await response.blob();
+              console.log('onCropComplete called with URL:', croppedImageUrl.substring(0, 50) + '...', 'mimeType:', mimeType);
+              
+              // Handle blob URLs and data URLs
+              let blob: Blob;
+              if (croppedImageUrl.startsWith('blob:')) {
+                console.log('Fetching blob URL...');
+                const response = await fetch(croppedImageUrl);
+                if (!response.ok) {
+                  throw new Error(`Failed to fetch blob: ${response.status} ${response.statusText}`);
+                }
+                blob = await response.blob();
+                console.log('Blob fetched, size:', blob.size, 'type:', blob.type);
+              } else if (croppedImageUrl.startsWith('data:')) {
+                console.log('Converting data URL to blob...');
+                const response = await fetch(croppedImageUrl);
+                blob = await response.blob();
+                console.log('Data URL converted, size:', blob.size, 'type:', blob.type);
+              } else {
+                throw new Error('Invalid image URL format');
+              }
               
               let extension = 'jpg';
               if (mimeType === 'image/gif') extension = 'gif';
               else if (mimeType === 'image/png') extension = 'png';
               else if (mimeType === 'image/webp') extension = 'webp';
               
+              console.log('Creating FormData with extension:', extension);
               const formData = new FormData();
               formData.append("file", blob, `cropped-avatar.${extension}`);
 
+              console.log('Uploading to /api/user/upload-avatar...');
               const uploadResponse = await fetch("/api/user/upload-avatar", {
                 method: "POST",
                 body: formData,
               });
 
+              console.log('Upload response status:', uploadResponse.status);
+
               if (uploadResponse.ok) {
                 const data = await uploadResponse.json();
+                console.log('Upload successful, image URL:', data.imageUrl);
                 setUser({ ...user!, image: data.imageUrl });
                 setShowCropper(false);
                 setImageToCrop(null);
                 setFileToCrop(null);
                 alert("Profile picture updated!");
               } else {
-                const error = await uploadResponse.json();
+                const errorText = await uploadResponse.text();
+                console.error('Upload failed:', errorText);
+                let error;
+                try {
+                  error = JSON.parse(errorText);
+                } catch {
+                  error = { error: errorText || "Failed to upload image" };
+                }
                 alert(error.error || "Failed to upload image");
               }
-            } catch (error) {
+            } catch (error: any) {
               console.error("Error uploading cropped image:", error);
-              alert("Error uploading image");
+              alert(`Error uploading image: ${error.message || 'Unknown error'}`);
+            } finally {
+              setUploadingAvatar(false);
             }
           }}
           onCancel={() => {

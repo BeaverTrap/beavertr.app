@@ -17,8 +17,12 @@ interface WishlistItem {
   priority?: number | null;
   notes?: string | null;
   itemType?: string | null;
+  category?: string | null;
+  tags?: string | null;
   size?: string | null;
   quantity?: number | null;
+  priceHistory?: string | null;
+  displayOrder?: number | null;
   isClaimed?: boolean;
   isPurchased?: boolean;
   claimStatus?: string | null;
@@ -97,6 +101,20 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
   const [expandedDescriptions, setExpandedDescriptions] = useState<Set<string>>(new Set());
   const [showPurchaseModal, setShowPurchaseModal] = useState<string | null>(null);
   const [isModerator, setIsModerator] = useState(false);
+  const [editingSize, setEditingSize] = useState<{ [key: string]: string }>({});
+  
+  // Search, filter, and sort state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<"date" | "price" | "priority" | "name" | "order">("date");
+  const [filterStatus, setFilterStatus] = useState<"all" | "available" | "claimed" | "purchased">("all");
+  const [filterCategory, setFilterCategory] = useState<string>("all");
+  const [showFilters, setShowFilters] = useState(false);
+  
+  // Bulk operations
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [bulkMode, setBulkMode] = useState(false);
+  const [showBulkActions, setShowBulkActions] = useState(false);
+  
   const { data: session } = useSession();
 
   // Check if current user is a moderator for this wishlist
@@ -267,13 +285,246 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
     return <div className="text-zinc-400">Loading...</div>;
   }
 
+  // Filter and sort items
+  const filteredAndSortedItems = items
+    .filter((item) => {
+      // Search filter
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const matchesSearch = 
+          item.title?.toLowerCase().includes(query) ||
+          item.description?.toLowerCase().includes(query) ||
+          item.notes?.toLowerCase().includes(query) ||
+          item.size?.toLowerCase().includes(query);
+        if (!matchesSearch) return false;
+      }
+      
+      // Status filter
+      if (filterStatus === "available") {
+        return !item.isClaimed && !item.isPurchased && item.claimStatus !== "purchased";
+      } else if (filterStatus === "claimed") {
+        return item.isClaimed || item.claimStatus === "pending" || item.claimStatus === "confirmed";
+      } else if (filterStatus === "purchased") {
+        return item.isPurchased || item.claimStatus === "purchased";
+      }
+      
+      // Category filter
+      if (filterCategory !== "all" && item.category !== filterCategory) {
+        return false;
+      }
+      
+      return true;
+    })
+    .sort((a, b) => {
+      if (sortBy === "price") {
+        const priceA = parseFloat(a.price?.replace(/[^0-9.]/g, "") || "0");
+        const priceB = parseFloat(b.price?.replace(/[^0-9.]/g, "") || "0");
+        return priceB - priceA; // Highest first
+      } else if (sortBy === "priority") {
+        return (b.priority || 0) - (a.priority || 0); // High priority first
+      } else if (sortBy === "name") {
+        return (a.title || "").localeCompare(b.title || "");
+      } else if (sortBy === "order") {
+        return (a.displayOrder || 0) - (b.displayOrder || 0); // By display order
+      } else { // date (default)
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(); // Newest first
+      }
+    });
+
   if (items.length === 0) {
     return <div className="text-zinc-400">No items yet. Add some!</div>;
   }
 
   return (
-    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-      {items.map((item) => {
+    <div>
+      {/* Search, Filter, and Sort Controls */}
+      <div className="mb-6 space-y-3">
+        {/* Search Bar */}
+        <div className="flex gap-3">
+          <div className="flex-1 relative">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search items..."
+              className="w-full px-4 py-2 rounded-xl bg-zinc-800/80 border border-zinc-700/50 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+          {isOwner && (
+            <button
+              onClick={() => {
+                setBulkMode(!bulkMode);
+                if (bulkMode) {
+                  setSelectedItems(new Set());
+                  setShowBulkActions(false);
+                }
+              }}
+              className={`px-4 py-2 rounded-xl border transition-colors ${
+                bulkMode 
+                  ? "bg-blue-600/80 border-blue-500 text-white" 
+                  : "bg-zinc-800/80 border-zinc-700/50 text-white hover:bg-zinc-700/80"
+              }`}
+            >
+              {bulkMode ? "Cancel" : "Select"}
+            </button>
+          )}
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="px-4 py-2 rounded-xl bg-zinc-800/80 border border-zinc-700/50 text-white hover:bg-zinc-700/80 transition-colors"
+          >
+            {showFilters ? "Hide" : "Show"} Filters
+          </button>
+        </div>
+
+        {/* Bulk Actions Bar */}
+        {isOwner && bulkMode && selectedItems.size > 0 && (
+          <div className="flex items-center gap-3 p-3 rounded-xl bg-blue-900/20 border border-blue-700/50">
+            <span className="text-sm text-blue-300">
+              {selectedItems.size} item{selectedItems.size !== 1 ? 's' : ''} selected
+            </span>
+            <div className="flex gap-2 ml-auto">
+              <button
+                onClick={async () => {
+                  if (confirm(`Delete ${selectedItems.size} item(s)?`)) {
+                    try {
+                      await Promise.all(
+                        Array.from(selectedItems).map(id =>
+                          fetch(`/api/wishlist/items?id=${id}`, { method: "DELETE" })
+                        )
+                      );
+                      setSelectedItems(new Set());
+                      setBulkMode(false);
+                      fetchItems();
+                    } catch (error) {
+                      console.error("Error deleting items:", error);
+                      alert("Error deleting items");
+                    }
+                  }
+                }}
+                className="px-3 py-1.5 text-sm rounded bg-red-600 hover:bg-red-700 text-white"
+              >
+                Delete Selected
+              </button>
+              <button
+                onClick={() => {
+                  const newPriority = prompt("Set priority (1 = High, 0 = Normal, -1 = Low):");
+                  if (newPriority !== null) {
+                    const priority = parseInt(newPriority);
+                    if (!isNaN(priority)) {
+                      Promise.all(
+                        Array.from(selectedItems).map(id =>
+                          fetch("/api/wishlist/items", {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ id, priority }),
+                          })
+                        )
+                      ).then(() => {
+                        setSelectedItems(new Set());
+                        setBulkMode(false);
+                        fetchItems();
+                      });
+                    }
+                  }
+                }}
+                className="px-3 py-1.5 text-sm rounded bg-zinc-700 hover:bg-zinc-600 text-white"
+              >
+                Set Priority
+              </button>
+              <button
+                onClick={() => {
+                  const category = prompt("Set category:");
+                  if (category !== null) {
+                    Promise.all(
+                      Array.from(selectedItems).map(id =>
+                        fetch("/api/wishlist/items", {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ id, category: category.trim() || null }),
+                        })
+                      )
+                    ).then(() => {
+                      setSelectedItems(new Set());
+                      setBulkMode(false);
+                      fetchItems();
+                    });
+                  }
+                }}
+                className="px-3 py-1.5 text-sm rounded bg-zinc-700 hover:bg-zinc-600 text-white"
+              >
+                Set Category
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Filter and Sort Options */}
+        {showFilters && (
+          <div className="flex flex-wrap gap-3 p-4 rounded-xl bg-zinc-800/30 border border-zinc-700/50">
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-zinc-300">Sort by:</label>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="px-3 py-1 rounded bg-zinc-900 border border-zinc-700 text-white text-sm"
+              >
+                <option value="date">Date Added</option>
+                <option value="price">Price</option>
+                <option value="priority">Priority</option>
+                <option value="name">Name</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-zinc-300">Status:</label>
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value as any)}
+                className="px-3 py-1 rounded bg-zinc-900 border border-zinc-700 text-white text-sm"
+              >
+                <option value="all">All Items</option>
+                <option value="available">Available</option>
+                <option value="claimed">Claimed</option>
+                <option value="purchased">Purchased</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-zinc-300">Category:</label>
+              <select
+                value={filterCategory}
+                onChange={(e) => setFilterCategory(e.target.value)}
+                className="px-3 py-1 rounded bg-zinc-900 border border-zinc-700 text-white text-sm"
+              >
+                <option value="all">All Categories</option>
+                {Array.from(new Set(items.map(i => i.category).filter(Boolean) as string[])).map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+            </div>
+            <div className="text-sm text-zinc-400 ml-auto">
+              Showing {filteredAndSortedItems.length} of {items.length} items
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Items Grid */}
+      {filteredAndSortedItems.length === 0 ? (
+        <div className="text-zinc-400 text-center py-8">
+          {searchQuery || filterStatus !== "all" 
+            ? "No items match your filters" 
+            : "No items yet. Add some!"}
+        </div>
+      ) : (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {filteredAndSortedItems.map((item) => {
         // Determine the clickable URL (affiliate if valid, otherwise original)
         const getClickableUrl = () => {
           if (item.affiliateUrl) {
@@ -315,9 +566,34 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
               ? "border-green-600 opacity-60"
               : item.isClaimed
               ? "border-yellow-600"
+              : selectedItems.has(item.id)
+              ? "border-blue-500 ring-2 ring-blue-500/50"
               : "border-zinc-700 hover:border-zinc-600"
-          }`}
+          } ${isOwner && !bulkMode && sortBy === "order" ? "cursor-move" : ""}`}
         >
+          {/* Bulk Selection Checkbox */}
+          {isOwner && bulkMode && (
+            <div className="mb-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selectedItems.has(item.id)}
+                  onChange={(e) => {
+                    const newSelected = new Set(selectedItems);
+                    if (e.target.checked) {
+                      newSelected.add(item.id);
+                    } else {
+                      newSelected.delete(item.id);
+                    }
+                    setSelectedItems(newSelected);
+                    setShowBulkActions(newSelected.size > 0);
+                  }}
+                  className="w-4 h-4 rounded bg-zinc-800 border-zinc-700 text-blue-600 focus:ring-2 focus:ring-blue-500/50"
+                />
+                <span className="text-xs text-zinc-400">Select</span>
+              </label>
+            </div>
+          )}
           {/* Image - Clickable */}
           {item.image && (
             <a
@@ -454,6 +730,11 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
                 High Priority
               </span>
             )}
+            {item.category && (
+              <span className="px-2 py-1 text-xs rounded bg-blue-600/20 text-blue-400">
+                {item.category}
+              </span>
+            )}
           </div>
 
           {/* Purchase information display */}
@@ -569,27 +850,53 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
             </div>
           )}
 
-          {/* Item Type, Size, Quantity, Notes */}
-          {(item.itemType || item.size || item.quantity || item.notes) && (
+          {/* Size, Quantity, Notes */}
+          {(item.size || item.quantity || item.notes) && (
             <div className="text-sm text-zinc-400 mb-3 space-y-1">
-              {item.itemType && (
-                <div className="flex items-center gap-2">
-                  <span className="text-zinc-500">Type:</span>
-                  <span className="text-white font-medium capitalize">
-                    {item.itemType === 'clothing' && '👕 Clothing'}
-                    {item.itemType === 'shoes' && '👟 Shoes'}
-                    {item.itemType === 'hat' && '🧢 Hat'}
-                    {item.itemType === 'accessories' && '💍 Accessories'}
-                    {item.itemType === 'other' && '📦 Other'}
-                    {!['clothing', 'shoes', 'hat', 'accessories', 'other'].includes(item.itemType) && item.itemType}
-                  </span>
-                </div>
-              )}
+              {/* Size - inline edit for owners, display for others */}
               {item.size && (
-                <div>
-                  <span className="text-zinc-500">Size:</span> <span className="text-white font-medium">{item.size}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-zinc-500">Size:</span>
+                  {isOwner ? (
+                    <input
+                      type="text"
+                      value={editingSize[item.id] !== undefined ? editingSize[item.id] : item.size}
+                      onChange={(e) => {
+                        setEditingSize(prev => ({ ...prev, [item.id]: e.target.value }));
+                      }}
+                      onBlur={async (e) => {
+                        const newSize = e.target.value.trim();
+                        setEditingSize(prev => {
+                          const newState = { ...prev };
+                          delete newState[item.id];
+                          return newState;
+                        });
+                        if (newSize !== item.size) {
+                          try {
+                            await fetch("/api/wishlist/items", {
+                              method: "PATCH",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ id: item.id, size: newSize || null }),
+                            });
+                            fetchItems();
+                          } catch (error) {
+                            console.error("Error updating size:", error);
+                          }
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.currentTarget.blur();
+                        }
+                      }}
+                      className="px-2 py-0.5 text-sm rounded bg-zinc-900/50 border border-zinc-700/50 text-white focus:outline-none focus:ring-1 focus:ring-blue-500/50 w-24"
+                    />
+                  ) : (
+                    <span className="text-white">{item.size}</span>
+                  )}
                 </div>
               )}
+              
               {item.quantity && (
                 <div>
                   <span className="text-zinc-500">Quantity:</span> <span className="text-white">{item.quantity}</span>
@@ -599,6 +906,64 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
                 <div className="italic text-zinc-300">
                   <span className="text-zinc-500">Note:</span> {item.notes}
                 </div>
+              )}
+            </div>
+          )}
+          
+          {/* Add size button for owners if no size exists */}
+          {isOwner && !item.size && (
+            <div className="mb-3">
+              <button
+                onClick={() => {
+                  setEditingSize(prev => ({ ...prev, [item.id]: "" }));
+                }}
+                className="text-xs px-2 py-1 rounded bg-zinc-800/50 hover:bg-zinc-700/50 text-zinc-300 border border-zinc-700/50 transition-colors"
+              >
+                + Add size
+              </button>
+              {editingSize[item.id] !== undefined && (
+                <input
+                  type="text"
+                  value={editingSize[item.id]}
+                  onChange={(e) => {
+                    setEditingSize(prev => ({ ...prev, [item.id]: e.target.value }));
+                  }}
+                  onBlur={async (e) => {
+                    const newSize = e.target.value.trim();
+                    setEditingSize(prev => {
+                      const newState = { ...prev };
+                      delete newState[item.id];
+                      return newState;
+                    });
+                    if (newSize) {
+                      try {
+                        await fetch("/api/wishlist/items", {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ id: item.id, size: newSize }),
+                        });
+                        fetchItems();
+                      } catch (error) {
+                        console.error("Error updating size:", error);
+                      }
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.currentTarget.blur();
+                    }
+                    if (e.key === "Escape") {
+                      setEditingSize(prev => {
+                        const newState = { ...prev };
+                        delete newState[item.id];
+                        return newState;
+                      });
+                    }
+                  }}
+                  placeholder="Large, XL, 10"
+                  autoFocus
+                  className="ml-2 px-2 py-0.5 text-sm rounded bg-zinc-900/50 border border-zinc-700/50 text-white placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500/50 w-24"
+                />
               )}
             </div>
           )}
@@ -765,6 +1130,8 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
         </div>
         );
       })}
+        </div>
+      )}
 
       {/* Purchase Proof Modal */}
       {showPurchaseModal && (() => {
