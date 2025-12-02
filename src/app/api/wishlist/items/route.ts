@@ -3,20 +3,28 @@ import { getDefaultWishlist, addWishlistItem, getWishlistItems, deleteWishlistIt
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
-  const session = await auth();
-  const { searchParams } = new URL(request.url);
-  const wishlistId = searchParams.get("wishlistId");
+  try {
+    const session = await auth();
+    const { searchParams } = new URL(request.url);
+    const wishlistId = searchParams.get("wishlistId");
 
-  if (!wishlistId) {
+    if (!wishlistId) {
+      return NextResponse.json(
+        { error: "Wishlist ID is required" },
+        { status: 400 }
+      );
+    }
+
+    // TODO: Check privacy and permissions
+    const items = await getWishlistItems(wishlistId);
+    return NextResponse.json(items);
+  } catch (error: any) {
+    console.error("Error fetching wishlist items:", error);
     return NextResponse.json(
-      { error: "Wishlist ID is required" },
-      { status: 400 }
+      { error: error.message || "Failed to fetch wishlist items" },
+      { status: 500 }
     );
   }
-
-  // TODO: Check privacy and permissions
-  const items = await getWishlistItems(wishlistId);
-  return NextResponse.json(items);
 }
 
 export async function POST(request: Request) {

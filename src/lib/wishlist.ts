@@ -55,11 +55,32 @@ export async function getDefaultWishlist(userId: string) {
 }
 
 export async function getWishlistItems(wishlistId: string) {
-  return await db
-    .select()
-    .from(wishlistItems)
-    .where(eq(wishlistItems.wishlistId, wishlistId))
-    .orderBy(wishlistItems.displayOrder, desc(wishlistItems.priority), desc(wishlistItems.createdAt));
+  try {
+    const items = await db
+      .select()
+      .from(wishlistItems)
+      .where(eq(wishlistItems.wishlistId, wishlistId))
+      .orderBy(wishlistItems.displayOrder, desc(wishlistItems.priority), desc(wishlistItems.createdAt));
+    return items;
+  } catch (error: any) {
+    console.error("Error fetching wishlist items:", error);
+    // If orderBy fails, try without it
+    try {
+      const items = await db
+        .select()
+        .from(wishlistItems)
+        .where(eq(wishlistItems.wishlistId, wishlistId))
+        .orderBy(desc(wishlistItems.createdAt));
+      return items;
+    } catch (fallbackError: any) {
+      console.error("Fallback query also failed:", fallbackError);
+      // Last resort - just get items without ordering
+      return await db
+        .select()
+        .from(wishlistItems)
+        .where(eq(wishlistItems.wishlistId, wishlistId));
+    }
+  }
 }
 
 export async function addWishlistItem(
