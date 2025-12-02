@@ -68,50 +68,77 @@ export async function addWishlistItem(
   data: {
     title: string;
     url: string;
-    affiliateUrl?: string;
-    image?: string;
-    price?: string;
-    description?: string;
+    affiliateUrl?: string | null;
+    image?: string | null;
+    price?: string | null;
+    description?: string | null;
     priority?: number;
-    notes?: string;
-    itemType?: string;
-    category?: string;
-    tags?: string;
-    size?: string;
-    quantity?: number;
+    notes?: string | null;
+    itemType?: string | null;
+    category?: string | null;
+    tags?: string | null;
+    size?: string | null;
+    quantity?: number | null;
   }
 ) {
-  const id = randomUUID();
-  const now = new Date();
-  
-  await db.insert(wishlistItems).values({
-    id,
-    title: data.title,
-    url: data.url,
-    affiliateUrl: data.affiliateUrl || null,
-    image: data.image || null,
-    price: data.price || null,
-    description: data.description || null,
-    priority: data.priority || 0,
-    notes: data.notes || null,
-    itemType: data.itemType || null,
-    category: data.category || null,
-    tags: data.tags || null,
-    size: data.size || null,
-    quantity: data.quantity || null,
-    wishlistId,
-    userId,
-    createdAt: now,
-    updatedAt: now,
-  });
+  try {
+    // Verify wishlist exists and user has access
+    const { wishlists } = await import('./schema');
+    const [wishlist] = await db
+      .select()
+      .from(wishlists)
+      .where(eq(wishlists.id, wishlistId))
+      .limit(1);
+    
+    if (!wishlist) {
+      throw new Error("Wishlist not found");
+    }
+    
+    // Verify user owns the wishlist (or has permission)
+    if (wishlist.userId !== userId) {
+      // TODO: Check if user has friend/moderator permissions
+      throw new Error("You don't have permission to add items to this wishlist");
+    }
+    
+    const id = randomUUID();
+    const now = new Date();
+    
+    await db.insert(wishlistItems).values({
+      id,
+      title: data.title,
+      url: data.url,
+      affiliateUrl: data.affiliateUrl || null,
+      image: data.image || null,
+      price: data.price || null,
+      description: data.description || null,
+      priority: data.priority || 0,
+      notes: data.notes || null,
+      itemType: data.itemType || null,
+      category: data.category || null,
+      tags: data.tags || null,
+      size: data.size || null,
+      quantity: data.quantity || null,
+      wishlistId,
+      userId,
+      createdAt: now,
+      updatedAt: now,
+    });
 
-  const [item] = await db
-    .select()
-    .from(wishlistItems)
-    .where(eq(wishlistItems.id, id))
-    .limit(1);
+    const [item] = await db
+      .select()
+      .from(wishlistItems)
+      .where(eq(wishlistItems.id, id))
+      .limit(1);
 
-  return item;
+    if (!item) {
+      throw new Error("Failed to retrieve created item");
+    }
+
+    return item;
+  } catch (error: any) {
+    console.error("Error in addWishlistItem:", error);
+    throw error;
+  }
 }
 
 export async function updateWishlistItem(
