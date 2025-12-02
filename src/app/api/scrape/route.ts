@@ -182,7 +182,8 @@ export async function scrapeProductData(url: string) {
     const isShopify = url.includes("myshopify.com") || 
                       url.includes("shopify.com") ||
                       url.includes("thearcanelibrary.com") ||
-                      url.includes("collections/") && url.includes("/products/");
+                      url.includes("fangamer.com") ||
+                      (url.includes("collections/") && url.includes("/products/"));
     
     // For Amazon, use Puppeteer to handle JavaScript-rendered content
     if (isAmazon) {
@@ -315,11 +316,51 @@ export async function scrapeProductData(url: string) {
         }
       });
       
+      // Also try to extract from Shopify's product JSON object (often in script tags)
+      $('script').each((_, el) => {
+        try {
+          const scriptText = $(el).html() || "";
+          // Look for Shopify product JSON patterns
+          if (scriptText.includes('product') || scriptText.includes('Product') || scriptText.includes('variant')) {
+            // Try to find JSON objects with product data
+            const jsonMatches = scriptText.match(/\{[\s\S]*?"product"[\s\S]*?\}/g) || 
+                               scriptText.match(/\{[\s\S]*?"Product"[\s\S]*?\}/g) ||
+                               scriptText.match(/\{[\s\S]*?"title"[\s\S]*?"price"[\s\S]*?\}/g);
+            
+            for (const match of jsonMatches || []) {
+              try {
+                const productJson = JSON.parse(match);
+                if (productJson.title && !shopifyTitle) {
+                  shopifyTitle = productJson.title;
+                }
+                if (productJson.price && !shopifyPrice) {
+                  const priceNum = typeof productJson.price === 'number' 
+                    ? productJson.price / 100 // Shopify prices are often in cents
+                    : parseFloat(productJson.price);
+                  if (!isNaN(priceNum)) {
+                    shopifyPrice = `$${priceNum.toFixed(2)}`;
+                  }
+                }
+                if (productJson.images && productJson.images[0] && !shopifyImage) {
+                  shopifyImage = productJson.images[0];
+                }
+              } catch (e) {
+                // Not valid JSON, continue
+              }
+            }
+          }
+        } catch (e) {
+          // Ignore
+        }
+      });
+      
       // Try Shopify-specific HTML selectors
       if (!shopifyTitle) {
         shopifyTitle = 
           $('.product-title, .product__title, h1.product-title, h1.product__title').first().text().trim() ||
           $('h1').first().text().trim() ||
+          $('h1.product-single__title').text().trim() ||
+          $('.product-single__title').text().trim() ||
           "";
       }
       
@@ -331,19 +372,33 @@ export async function scrapeProductData(url: string) {
           '[data-product-price]',
           '.money',
           '.price-current, .price__current',
+          '.product-single__price',
+          '.product-price-wrapper',
+          'span[itemprop="price"]',
         ];
         
         for (const selector of priceSelectors) {
           const priceEl = $(selector).first();
           if (priceEl.length) {
-            const priceText = priceEl.text().trim() || priceEl.attr('data-product-price') || priceEl.attr('content');
+            const priceText = priceEl.text().trim() || priceEl.attr('data-product-price') || priceEl.attr('content') || priceEl.attr('itemprop') === 'price' ? priceEl.text().trim() : '';
             if (priceText) {
-              const priceMatch = priceText.match(/[\d,]+\.?\d{0,2}/);
+              // Look for price pattern in the text
+              const priceMatch = priceText.match(/\$?([\d,]+\.?\d{0,2})/);
               if (priceMatch) {
-                shopifyPrice = `$${priceMatch[0]}`;
+                shopifyPrice = `$${priceMatch[1]}`;
                 break;
               }
             }
+          }
+        }
+        
+        // If still no price, try searching the entire page for price patterns near "price" text
+        if (!shopifyPrice) {
+          const pricePattern = /\$(\d+(?:\.\d{2})?)/;
+          const bodyText = $('body').text();
+          const match = bodyText.match(pricePattern);
+          if (match) {
+            shopifyPrice = `$${match[1]}`;
           }
         }
       }
@@ -354,9 +409,12 @@ export async function scrapeProductData(url: string) {
           $('.product-image img, .product__image img, .product-photos img').first().attr('src') ||
           $('img[data-product-image]').first().attr('src') ||
           $('.product-gallery img').first().attr('src') ||
+          $('.product-single__photo img').first().attr('src') ||
+          $('.product__media img').first().attr('src') ||
+          $('img[data-src]').first().attr('data-src') ||
           "";
         
-        // Handle relative URLs
+        // Handle relative URLs and data-src attributes
         if (shopifyImage && shopifyImage.startsWith('//')) {
           shopifyImage = 'https:' + shopifyImage;
         } else if (shopifyImage && shopifyImage.startsWith('/')) {
@@ -367,12 +425,19 @@ export async function scrapeProductData(url: string) {
             // Ignore
           }
         }
+        
+        // If still no image, try to get from meta tags (already set above, but check again)
+        if (!shopifyImage) {
+          shopifyImage = image || "";
+        }
       }
       
       if (!shopifyDescription) {
         shopifyDescription = 
           $('.product-description, .product__description, .product-content').first().text().trim() ||
           $('[data-product-description]').first().text().trim() ||
+          $('.product-single__description').text().trim() ||
+          $('.product__description').text().trim() ||
           "";
       }
       
