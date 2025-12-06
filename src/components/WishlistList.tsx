@@ -1363,6 +1363,9 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
               image={editingImage.image}
               originalFile={editingImage.file}
               uploading={uploadingImage}
+              aspect={undefined}
+              cropShape="rect"
+              title="Edit Image"
               onCropComplete={async (croppedImage, mimeType) => {
                 setUploadingImage(true);
                 try {

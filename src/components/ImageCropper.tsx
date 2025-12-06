@@ -10,9 +10,21 @@ interface ImageCropperProps {
   onCropComplete: (croppedImage: string, mimeType: string) => void;
   onCancel: () => void;
   uploading?: boolean;
+  aspect?: number; // Aspect ratio (undefined = free)
+  cropShape?: 'rect' | 'round'; // Crop shape
+  title?: string; // Modal title
 }
 
-export default function ImageCropper({ image, originalFile, onCropComplete, onCancel, uploading = false }: ImageCropperProps) {
+export default function ImageCropper({ 
+  image, 
+  originalFile, 
+  onCropComplete, 
+  onCancel, 
+  uploading = false,
+  aspect,
+  cropShape = 'rect',
+  title = 'Crop Image'
+}: ImageCropperProps) {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
@@ -50,11 +62,50 @@ export default function ImageCropper({ image, originalFile, onCropComplete, onCa
   );
 
   const createImage = (url: string): Promise<HTMLImageElement> =>
-    new Promise((resolve, reject) => {
-      const image = new Image();
-      image.addEventListener("load", () => resolve(image));
-      image.addEventListener("error", (error) => reject(error));
-      image.src = url;
+    new Promise(async (resolve, reject) => {
+      try {
+        let imageUrl = url;
+        
+        // If it's an external URL (not data URL), proxy it through our API to avoid CORS issues
+        if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+          try {
+            // Use our proxy endpoint to fetch the image
+            const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(imageUrl)}`;
+            const response = await fetch(proxyUrl);
+            if (!response.ok) throw new Error('Failed to fetch image via proxy');
+            const blob = await response.blob();
+            const dataUrl = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
+            });
+            imageUrl = dataUrl;
+          } catch (fetchError) {
+            console.warn('Failed to proxy image, trying direct load with crossOrigin:', fetchError);
+            // Fallback: try direct load with crossOrigin
+            const image = new Image();
+            image.crossOrigin = 'anonymous';
+            image.addEventListener("load", () => resolve(image));
+            image.addEventListener("error", (error) => {
+              console.error('Image load error:', error);
+              reject(new Error('Failed to load image. This may be due to CORS restrictions. Please try uploading the image directly.'));
+            });
+            image.src = url;
+            return;
+          }
+        }
+        
+        const image = new Image();
+        image.addEventListener("load", () => resolve(image));
+        image.addEventListener("error", (error) => {
+          console.error('Image load error:', error);
+          reject(new Error('Failed to load image. Please try again.'));
+        });
+        image.src = imageUrl;
+      } catch (error: any) {
+        reject(error);
+      }
     });
 
   const getCroppedGif = async (
@@ -371,7 +422,7 @@ export default function ImageCropper({ image, originalFile, onCropComplete, onCa
     <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
       <div className="bg-zinc-900 rounded-lg border border-zinc-700 w-full max-w-2xl">
         <div className="p-4 border-b border-zinc-700">
-          <h2 className="text-xl font-semibold text-white">Crop Profile Picture</h2>
+          <h2 className="text-xl font-semibold text-white">{title}</h2>
           <p className="text-sm text-zinc-400 mt-1">Drag to reposition, use slider to zoom</p>
           {isGif && !processingGif && (
             <p className="text-sm text-green-400 mt-2">
@@ -395,11 +446,11 @@ export default function ImageCropper({ image, originalFile, onCropComplete, onCa
             image={image}
             crop={crop}
             zoom={zoom}
-            aspect={1}
+            aspect={aspect}
             onCropChange={onCropChange}
             onZoomChange={onZoomChange}
             onCropComplete={onCropCompleteCallback}
-            cropShape="round"
+            cropShape={cropShape}
             showGrid={false}
           />
         </div>
