@@ -446,6 +446,7 @@ export async function scrapeProductData(url: string) {
       // Amazon price extraction - get the main displayed price (not per-count)
       // If we didn't get price from JSON-LD, try HTML selectors
       let discountPercent = "";
+      let originalPrice = "";
       
       // Strategy: Look specifically in price blocks, avoid per-count prices
       // The main price is usually in #priceblock_dealprice or #priceblock_ourprice
@@ -453,134 +454,238 @@ export async function scrapeProductData(url: string) {
       // If we didn't get price from JSON-LD, try HTML selectors
       if (!amazonPrice) {
         // First, try deal price block (most reliable for sale items)
-      const dealPriceBlock = $('#priceblock_dealprice');
-      if (dealPriceBlock.length) {
-        const dealPriceEl = dealPriceBlock.find('.a-offscreen').first();
-        if (dealPriceEl.length) {
-          const priceText = dealPriceEl.text().trim();
-          const priceMatch = priceText.match(/[\d,]+\.?\d*/);
-          if (priceMatch) {
-            const priceValue = parseFloat(priceMatch[0].replace(/,/g, ''));
-            // Check if this block contains per-count text
-            const blockText = dealPriceBlock.text();
-            const hasPerCount = blockText.includes('/count') || blockText.includes('per count');
-            
-            // If no per-count indicator, or price is reasonable, use it
-            if (!hasPerCount || priceValue >= 20) {
-              amazonPrice = `$${priceMatch[0]}`;
-            }
-          }
-        }
-      }
-      
-      // If no deal price, try regular price block
-      if (!amazonPrice) {
-        const ourPriceBlock = $('#priceblock_ourprice');
-        if (ourPriceBlock.length) {
-          const ourPriceEl = ourPriceBlock.find('.a-offscreen').first();
-          if (ourPriceEl.length) {
-            const priceText = ourPriceEl.text().trim();
+        const dealPriceBlock = $('#priceblock_dealprice, .a-price.a-text-price.a-size-medium.apexPriceToPay');
+        if (dealPriceBlock.length) {
+          const dealPriceEl = dealPriceBlock.find('.a-offscreen').first();
+          if (dealPriceEl.length) {
+            const priceText = dealPriceEl.text().trim();
             const priceMatch = priceText.match(/[\d,]+\.?\d*/);
             if (priceMatch) {
               const priceValue = parseFloat(priceMatch[0].replace(/,/g, ''));
-              const blockText = ourPriceBlock.text();
-              const hasPerCount = blockText.includes('/count') || blockText.includes('per count');
+              // Check if this block contains per-count text
+              const blockText = dealPriceBlock.text();
+              const hasPerCount = blockText.includes('/count') || blockText.includes('per count') || blockText.includes('per unit');
               
+              // If no per-count indicator, or price is reasonable, use it
               if (!hasPerCount || priceValue >= 20) {
                 amazonPrice = `$${priceMatch[0]}`;
+                
+                // Try to get original price (strikethrough price)
+                const originalPriceEl = dealPriceBlock.siblings('.a-text-strike, .a-text-price').find('.a-offscreen').first();
+                if (originalPriceEl.length) {
+                  const origText = originalPriceEl.text().trim();
+                  const origMatch = origText.match(/[\d,]+\.?\d*/);
+                  if (origMatch) {
+                    originalPrice = `$${origMatch[0]}`;
+                  }
+                }
               }
             }
           }
         }
-      }
-      
-      // Fallback: Look for price in main price area, but filter out per-count
-      if (!amazonPrice) {
-        const priceBlock = $('#price');
-        if (priceBlock.length) {
-          const blockText = priceBlock.text();
-          const hasPerCount = blockText.includes('/count') || blockText.includes('per count');
-          
-          // Get all prices from this block
-          const allPrices: Array<{ price: string; value: number }> = [];
-          priceBlock.find('.a-offscreen').each((_, el) => {
-            const priceText = $(el).text().trim();
-            const priceMatch = priceText.match(/[\d,]+\.?\d*/);
-            if (priceMatch) {
-              const priceValue = parseFloat(priceMatch[0].replace(/,/g, ''));
-              if (priceValue >= 10) {
-                allPrices.push({ price: `$${priceMatch[0]}`, value: priceValue });
+        
+        // If no deal price, try regular price block
+        if (!amazonPrice) {
+          const ourPriceBlock = $('#priceblock_ourprice, .a-price.a-text-price.a-size-medium');
+          if (ourPriceBlock.length) {
+            const ourPriceEl = ourPriceBlock.find('.a-offscreen').first();
+            if (ourPriceEl.length) {
+              const priceText = ourPriceEl.text().trim();
+              const priceMatch = priceText.match(/[\d,]+\.?\d*/);
+              if (priceMatch) {
+                const priceValue = parseFloat(priceMatch[0].replace(/,/g, ''));
+                const blockText = ourPriceBlock.text();
+                const hasPerCount = blockText.includes('/count') || blockText.includes('per count') || blockText.includes('per unit');
+                
+                if (!hasPerCount || priceValue >= 20) {
+                  amazonPrice = `$${priceMatch[0]}`;
+                }
               }
             }
-          });
+          }
+        }
+        
+        // Try new Amazon price selectors (2024+ layout)
+        if (!amazonPrice) {
+          const newPriceSelectors = [
+            '.a-price.a-text-price[data-a-color="base"]',
+            '.a-price .a-offscreen',
+            '[data-a-color="price"] .a-offscreen',
+            '.a-price-whole',
+            '.apexPriceToPay .a-offscreen',
+          ];
           
-          // If we have prices and no per-count, or if we have multiple prices, pick the largest
-          if (allPrices.length > 0) {
-            if (!hasPerCount || allPrices.length === 1) {
-              allPrices.sort((a, b) => b.value - a.value);
-              amazonPrice = allPrices[0].price;
-            } else {
-              // If there's per-count, pick the larger price (main price)
-              allPrices.sort((a, b) => b.value - a.value);
-              if (allPrices.length >= 2 && allPrices[0].value > allPrices[1].value * 2) {
-                // If largest is much bigger, it's likely the main price
+          for (const selector of newPriceSelectors) {
+            const priceEl = $(selector).first();
+            if (priceEl.length) {
+              let priceText = priceEl.text().trim();
+              // If it's a whole price, try to get cents too
+              if (selector.includes('a-price-whole')) {
+                const centsEl = priceEl.siblings('.a-price-fraction');
+                if (centsEl.length) {
+                  priceText = priceText + '.' + centsEl.text().trim();
+                }
+              }
+              
+              const priceMatch = priceText.match(/[\d,]+\.?\d*/);
+              if (priceMatch) {
+                const priceValue = parseFloat(priceMatch[0].replace(/,/g, ''));
+                if (priceValue >= 1 && priceValue <= 100000) { // Reasonable price range
+                  amazonPrice = `$${priceMatch[0]}`;
+                  break;
+                }
+              }
+            }
+          }
+        }
+        
+        // Fallback: Look for price in main price area, but filter out per-count
+        if (!amazonPrice) {
+          const priceBlock = $('#price, .a-section.a-spacing-none.aok-align-center');
+          if (priceBlock.length) {
+            const blockText = priceBlock.text();
+            const hasPerCount = blockText.includes('/count') || blockText.includes('per count') || blockText.includes('per unit');
+            
+            // Get all prices from this block
+            const allPrices: Array<{ price: string; value: number }> = [];
+            priceBlock.find('.a-offscreen, .a-price-whole').each((_, el) => {
+              let priceText = $(el).text().trim();
+              // Handle whole price + fraction
+              if ($(el).hasClass('a-price-whole')) {
+                const centsEl = $(el).siblings('.a-price-fraction');
+                if (centsEl.length) {
+                  priceText = priceText + '.' + centsEl.text().trim();
+                }
+              }
+              
+              const priceMatch = priceText.match(/[\d,]+\.?\d*/);
+              if (priceMatch) {
+                const priceValue = parseFloat(priceMatch[0].replace(/,/g, ''));
+                if (priceValue >= 1 && priceValue <= 100000) {
+                  allPrices.push({ price: `$${priceMatch[0]}`, value: priceValue });
+                }
+              }
+            });
+            
+            // If we have prices and no per-count, or if we have multiple prices, pick the largest
+            if (allPrices.length > 0) {
+              if (!hasPerCount || allPrices.length === 1) {
+                allPrices.sort((a, b) => b.value - a.value);
                 amazonPrice = allPrices[0].price;
+              } else {
+                // If there's per-count, pick the larger price (main price)
+                allPrices.sort((a, b) => b.value - a.value);
+                if (allPrices.length >= 2 && allPrices[0].value > allPrices[1].value * 2) {
+                  // If largest is much bigger, it's likely the main price
+                  amazonPrice = allPrices[0].price;
+                }
               }
             }
           }
         }
-      }
       } // End of if (!amazonPrice) block
       
-      // Extract discount percentage from the price area
+      // Extract discount percentage and original price from the price area
       if (amazonPrice) {
         // Look for discount percentage near the price
-        const priceBlock = $('#price, #priceblock_dealprice, #priceblock_ourprice').first();
+        const priceBlock = $('#price, #priceblock_dealprice, #priceblock_ourprice, .a-section.a-spacing-none.aok-align-center').first();
         const priceBlockText = priceBlock.text();
         
-        // Look for patterns like "-34%" in the price block
-        const percentMatch = priceBlockText.match(/-(\d+)%/);
+        // Look for patterns like "-34%" or "Save 34%" in the price block
+        const percentMatch = priceBlockText.match(/(?:Save\s+|-|save\s+)(\d+)%/i);
         if (percentMatch) {
           discountPercent = `-${percentMatch[1]}%`;
         } else {
           // Try looking in discount badges
-          const discountBadge = $('.a-size-large.a-color-price, .a-color-price').first().text().trim();
-          const badgeMatch = discountBadge.match(/-?(\d+)%/);
+          const discountBadge = $('.a-size-large.a-color-price, .a-color-price, .savingsPercentage').first();
+          const badgeText = discountBadge.text().trim();
+          const badgeMatch = badgeText.match(/(?:Save\s+|-|save\s+)?(\d+)%/i);
           if (badgeMatch) {
             discountPercent = `-${badgeMatch[1]}%`;
           }
         }
         
-        // Format: price with discount if available
-        if (discountPercent) {
+        // Try to get original/strikethrough price if we don't have it
+        if (!originalPrice) {
+          const strikePrice = $('.a-text-strike .a-offscreen, .a-text-price.a-color-secondary .a-offscreen').first();
+          if (strikePrice.length) {
+            const strikeText = strikePrice.text().trim();
+            const strikeMatch = strikeText.match(/[\d,]+\.?\d*/);
+            if (strikeMatch) {
+              originalPrice = `$${strikeMatch[0]}`;
+            }
+          }
+        }
+        
+        // Format: price with discount and original price if available
+        if (originalPrice && discountPercent) {
+          amazonPrice = `${originalPrice} → ${amazonPrice} ${discountPercent}`;
+        } else if (originalPrice) {
+          amazonPrice = `${originalPrice} → ${amazonPrice}`;
+        } else if (discountPercent) {
           amazonPrice = `${amazonPrice} ${discountPercent}`;
         }
       }
       
       // Amazon image extraction (if not already found from JSON-LD)
+      // Try to get highest resolution image available
       if (!amazonImage) {
-        amazonImage = 
-          $('#landingImage').attr('src') ||
-          $('#landingImage').attr('data-old-src') ||
-          $('#imgBlkFront').attr('src') ||
-          $('.a-dynamic-image').first().attr('src') ||
-          $('img[data-a-dynamic-image]').first().attr('data-a-dynamic-image') ||
-          "";
-        
-        // Parse data-a-dynamic-image if it's JSON
-        if (!amazonImage && $('img[data-a-dynamic-image]').length) {
+        // First try to get from data-a-dynamic-image (contains multiple sizes)
+        const dynamicImageEl = $('img[data-a-dynamic-image]').first();
+        if (dynamicImageEl.length) {
           try {
-            const dynamicImageData = $('img[data-a-dynamic-image]').first().attr('data-a-dynamic-image');
+            const dynamicImageData = dynamicImageEl.attr('data-a-dynamic-image');
             if (dynamicImageData) {
               const imageObj = JSON.parse(dynamicImageData);
               const imageKeys = Object.keys(imageObj);
               if (imageKeys.length > 0) {
-                amazonImage = imageKeys[0];
+                // Sort by size (larger images usually have longer URLs or specific patterns)
+                // Prefer images with "._AC_" in the name (Amazon's image format)
+                const sortedKeys = imageKeys.sort((a, b) => {
+                  // Prefer images with higher resolution indicators
+                  const aHasAC = a.includes('._AC_');
+                  const bHasAC = b.includes('._AC_');
+                  if (aHasAC && !bHasAC) return -1;
+                  if (!aHasAC && bHasAC) return 1;
+                  // Prefer longer URLs (often higher res)
+                  return b.length - a.length;
+                });
+                amazonImage = sortedKeys[0];
+                
+                // Try to get a higher resolution version by replacing size parameters
+                if (amazonImage.includes('._AC_')) {
+                  // Replace with larger size (SL1500 = 1500px, SL1000 = 1000px, etc.)
+                  amazonImage = amazonImage.replace(/\._AC_SL\d+_/, '._AC_SL1500_');
+                  amazonImage = amazonImage.replace(/\._AC_SX\d+_/, '._AC_SX1500_');
+                }
               }
             }
           } catch (e) {
-            // Ignore parse errors
+            // Fall back to src attribute
+            amazonImage = dynamicImageEl.attr('src') || "";
           }
+        }
+        
+        // Fallback to other selectors
+        if (!amazonImage) {
+          amazonImage = 
+            $('#landingImage').attr('src') ||
+            $('#landingImage').attr('data-old-src') ||
+            $('#imgBlkFront').attr('src') ||
+            $('.a-dynamic-image').first().attr('src') ||
+            $('img#main-image').attr('src') ||
+            "";
+        }
+        
+        // Try to upgrade image quality if we have a low-res version
+        if (amazonImage) {
+          // Replace common low-res patterns with high-res
+          amazonImage = amazonImage.replace(/\._AC_SL\d+_/, '._AC_SL1500_');
+          amazonImage = amazonImage.replace(/\._AC_SX\d+_/, '._AC_SX1500_');
+          amazonImage = amazonImage.replace(/\._AC_UL\d+_/, '._AC_UL1500_');
+          // Remove size restrictions
+          amazonImage = amazonImage.replace(/\._AC_SL\d+\./, '._AC_SL1500.');
+          amazonImage = amazonImage.replace(/\._AC_SX\d+\./, '._AC_SX1500.');
         }
       }
       

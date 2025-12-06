@@ -7,6 +7,7 @@ import EditItemDetails from "./EditItemDetails";
 import PurchaseProofModal from "./PurchaseProofModal";
 import ItemComments from "./ItemComments";
 import ItemReactions from "./ItemReactions";
+import ImageCropper from "./ImageCropper";
 
 interface WishlistItem {
   id: string;
@@ -104,6 +105,8 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
   const [showPurchaseModal, setShowPurchaseModal] = useState<string | null>(null);
   const [isModerator, setIsModerator] = useState(false);
   const [editingSize, setEditingSize] = useState<{ [key: string]: string }>({});
+  const [editingImage, setEditingImage] = useState<{ itemId: string; image: string; file?: File } | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
   
   // Search, filter, and sort state
   const [searchQuery, setSearchQuery] = useState("");
@@ -392,11 +395,13 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
         <div className="flex gap-3 items-center">
           <button
             onClick={() => setShowSearch(!showSearch)}
-            className="px-3 py-2 rounded-xl bg-zinc-800/80 border border-zinc-700/50 text-white hover:bg-zinc-700/80 transition-colors flex items-center gap-2"
+            className="px-2 py-1.5 rounded-lg bg-zinc-800/50 border border-zinc-700/30 text-white hover:bg-zinc-700/50 transition-all flex items-center gap-1.5 text-sm"
             title={showSearch ? "Hide search" : "Show search"}
           >
-            <span>{showSearch ? "🔍" : "🔍"}</span>
-            <span className="hidden sm:inline">{showSearch ? "Hide" : "Show"} Search</span>
+            <svg className={`w-4 h-4 transition-transform ${showSearch ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+            <span className="hidden sm:inline">Search</span>
           </button>
           {showSearch && (
             <div className="flex-1 relative">
@@ -437,9 +442,12 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
           )}
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className="px-4 py-2 rounded-xl bg-zinc-800/80 border border-zinc-700/50 text-white hover:bg-zinc-700/80 transition-colors"
+            className="px-2 py-1.5 rounded-lg bg-zinc-800/50 border border-zinc-700/30 text-white hover:bg-zinc-700/50 transition-all flex items-center gap-1.5 text-sm"
           >
-            {showFilters ? "Hide" : "Show"} Filters
+            <svg className={`w-4 h-4 transition-transform ${showFilters ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+            <span className="hidden sm:inline">Filters</span>
           </button>
         </div>
 
@@ -527,14 +535,14 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
 
         {/* Filter and Sort Options */}
         {showFilters && (
-          <div className="p-4 rounded-xl bg-zinc-800/30 border border-zinc-700/50 space-y-4">
+          <div className="p-4 rounded-lg bg-zinc-800/20 border border-zinc-700/30 space-y-4 backdrop-blur-sm">
             <div className="flex flex-wrap gap-3 items-center">
               <div className="flex items-center gap-2">
-                <label className="text-sm text-zinc-300">Sort by:</label>
+                <label className="text-xs text-zinc-400 font-medium">Sort:</label>
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as any)}
-                  className="px-3 py-1 rounded bg-zinc-900 border border-zinc-700 text-white text-sm"
+                  className="px-2.5 py-1.5 rounded-md bg-zinc-900/50 border border-zinc-700/30 text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/50 hover:border-zinc-600/50 transition-all"
                 >
                   <option value="date">Date Added</option>
                   <option value="price">Price</option>
@@ -543,11 +551,11 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
                 </select>
               </div>
               <div className="flex items-center gap-2">
-                <label className="text-sm text-zinc-300">Status:</label>
+                <label className="text-xs text-zinc-400 font-medium">Status:</label>
                 <select
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value as any)}
-                  className="px-3 py-1 rounded bg-zinc-900 border border-zinc-700 text-white text-sm"
+                  className="px-2.5 py-1.5 rounded-md bg-zinc-900/50 border border-zinc-700/30 text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/50 hover:border-zinc-600/50 transition-all"
                 >
                   <option value="all">All Items</option>
                   <option value="available">Available</option>
@@ -556,11 +564,11 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
                 </select>
               </div>
               <div className="flex items-center gap-2">
-                <label className="text-sm text-zinc-300">Category:</label>
+                <label className="text-xs text-zinc-400 font-medium">Category:</label>
                 <select
                   value={filterCategory}
                   onChange={(e) => setFilterCategory(e.target.value)}
-                  className="px-3 py-1 rounded bg-zinc-900 border border-zinc-700 text-white text-sm"
+                  className="px-2.5 py-1.5 rounded-md bg-zinc-900/50 border border-zinc-700/30 text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/50 hover:border-zinc-600/50 transition-all"
                 >
                   <option value="all">All Categories</option>
                   {Array.from(new Set(items.map(i => i.category).filter(Boolean) as string[])).map(cat => (
@@ -569,11 +577,11 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
                 </select>
               </div>
               <div className="flex items-center gap-2">
-                <label className="text-sm text-zinc-300">Store:</label>
+                <label className="text-xs text-zinc-400 font-medium">Store:</label>
                 <select
                   value={filterStore}
                   onChange={(e) => setFilterStore(e.target.value)}
-                  className="px-3 py-1 rounded bg-zinc-900 border border-zinc-700 text-white text-sm"
+                  className="px-2.5 py-1.5 rounded-md bg-zinc-900/50 border border-zinc-700/30 text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/50 hover:border-zinc-600/50 transition-all"
                 >
                   <option value="all">All Stores</option>
                   {Array.from(new Set(items.map(i => getStoreName(i.url)))).sort().map(store => (
@@ -582,7 +590,7 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
                 </select>
               </div>
               <div className="flex items-center gap-2">
-                <label className="text-sm text-zinc-300">Prime:</label>
+                <label className="text-xs text-zinc-400 font-medium">Prime:</label>
                 <select
                   value={filterPrime === null ? "all" : filterPrime ? "prime" : "non-prime"}
                   onChange={(e) => {
@@ -590,7 +598,7 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
                     else if (e.target.value === "prime") setFilterPrime(true);
                     else setFilterPrime(false);
                   }}
-                  className="px-3 py-1 rounded bg-zinc-900 border border-zinc-700 text-white text-sm"
+                  className="px-2.5 py-1.5 rounded-md bg-zinc-900/50 border border-zinc-700/30 text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/50 hover:border-zinc-600/50 transition-all"
                 >
                   <option value="all">All Items</option>
                   <option value="prime">Prime Only</option>
@@ -741,23 +749,39 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
               </label>
             </div>
           )}
-          {/* Image - Clickable */}
+          {/* Image - Clickable with Edit Option */}
           {item.image && (
-            <a
-              href={clickableUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block relative w-full h-48 mb-4 rounded-lg overflow-hidden bg-zinc-900 hover:opacity-90 transition-opacity cursor-pointer"
-            >
-              <img
-                src={item.image}
-                alt={item.title}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = "none";
-                }}
-              />
-            </a>
+            <div className="relative w-full h-48 mb-4 rounded-lg overflow-hidden bg-zinc-900 group">
+              <a
+                href={clickableUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full h-full hover:opacity-90 transition-opacity cursor-pointer"
+              >
+                <img
+                  src={item.image}
+                  alt={item.title}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = "none";
+                  }}
+                />
+              </a>
+              {isOwner && (
+                <button
+                  onClick={() => {
+                    setEditingImage({ itemId: item.id, image: item.image || '' });
+                  }}
+                  className="absolute top-2 right-2 px-2 py-1.5 rounded-md bg-black/60 hover:bg-black/80 text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm flex items-center gap-1"
+                  title="Edit image"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  Edit
+                </button>
+              )}
+            </div>
           )}
 
           {/* Store Name */}
@@ -836,9 +860,23 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
                         return newSet;
                       });
                     }}
-                    className="text-xs text-blue-400 hover:text-blue-300 mt-1 transition-colors"
+                    className="text-xs text-blue-400 hover:text-blue-300 mt-1 transition-colors flex items-center gap-1"
                   >
-                    {isExpanded ? 'Show less' : 'Show more'}
+                    {isExpanded ? (
+                      <>
+                        <span>Show less</span>
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                        </svg>
+                      </>
+                    ) : (
+                      <>
+                        <span>Show more</span>
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </>
+                    )}
                   </button>
                 )}
               </div>
@@ -1064,7 +1102,7 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
                 onClick={() => {
                   setEditingSize(prev => ({ ...prev, [item.id]: "" }));
                 }}
-                className="text-xs px-2 py-1 rounded bg-zinc-800/50 hover:bg-zinc-700/50 text-zinc-300 border border-zinc-700/50 transition-colors"
+                    className="text-xs px-2 py-1 rounded-md bg-zinc-800/30 hover:bg-zinc-700/40 text-zinc-300 border border-zinc-700/30 hover:border-zinc-600/50 transition-all"
               >
                 + Add size
               </button>
@@ -1165,24 +1203,27 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
                   href={purchaseUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm text-blue-400 hover:text-blue-300 whitespace-nowrap"
+                  className="text-sm text-blue-400 hover:text-blue-300 transition-colors whitespace-nowrap flex items-center gap-1"
                   title={isValidAffiliateUrl ? "Using affiliate link" : "View product"}
                 >
-                  {isValidAffiliateUrl ? "Purchase →" : "View →"}
+                  {isValidAffiliateUrl ? "Purchase" : "View"}
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
                 </a>
               );
             })()}
             
-            <div className="flex flex-wrap gap-2 flex-1 justify-end">
+            <div className="flex flex-wrap gap-1.5 flex-1 justify-end">
               {isOwner && (
                 <>
                   {item.isPurchased && (
                     <button
                       onClick={() => handleClaim(item.id, "unpurchase")}
-                      className="text-xs px-2 py-1 rounded bg-orange-600/20 hover:bg-orange-600/30 text-orange-400 whitespace-nowrap"
+                      className="text-xs px-2 py-1 rounded-md bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border border-orange-500/20 hover:border-orange-500/30 transition-all whitespace-nowrap"
                       title="Unmark as purchased"
                     >
-                      ↶ Unmark Purchased
+                      Unmark
                     </button>
                   )}
                   <EditItemDetails item={item} onUpdate={fetchItems} />
@@ -1191,10 +1232,10 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
                   )}
                   <button
                     onClick={() => handleRefresh(item)}
-                    className="text-xs px-2 py-1 rounded bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 whitespace-nowrap"
+                    className="text-xs px-2 py-1 rounded-md bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 hover:border-blue-500/30 transition-all whitespace-nowrap"
                     title="Refresh item data"
                   >
-                    ↻ Refresh
+                    ↻
                   </button>
                 </>
               )}
@@ -1204,25 +1245,25 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
                     <>
                       <button
                         onClick={() => setShowPurchaseModal(item.id)}
-                        className="text-xs px-2 py-1 rounded bg-green-600/20 hover:bg-green-600/30 text-green-400 whitespace-nowrap"
+                        className="text-xs px-2 py-1 rounded-md bg-green-500/10 hover:bg-green-500/20 text-green-400 border border-green-500/20 hover:border-green-500/30 transition-all whitespace-nowrap"
                       >
-                        ✓ Mark as Purchased
+                        ✓ Purchased
                       </button>
                       <button
                         onClick={() => handleClaim(item.id, "unclaim")}
-                        className="text-xs px-2 py-1 rounded bg-zinc-700 hover:bg-zinc-600 text-white whitespace-nowrap"
+                        className="text-xs px-2 py-1 rounded-md bg-zinc-700/50 hover:bg-zinc-600/50 text-zinc-300 border border-zinc-600/30 hover:border-zinc-500/50 transition-all whitespace-nowrap"
                       >
                         Unclaim
                       </button>
                     </>
                   ) : item.isClaimed ? (
-                    <span className="text-xs px-2 py-1 rounded bg-yellow-600/20 text-yellow-400 whitespace-nowrap">
-                      Claimed by someone else
+                    <span className="text-xs px-2 py-1 rounded-md bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 whitespace-nowrap">
+                      Claimed
                     </span>
                   ) : (
                     <button
                       onClick={() => handleClaim(item.id, "claim")}
-                      className="text-xs px-2 py-1 rounded bg-yellow-600/20 hover:bg-yellow-600/30 text-yellow-400 whitespace-nowrap"
+                      className="text-xs px-2 py-1 rounded-md bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 border border-yellow-500/20 hover:border-yellow-500/30 transition-all whitespace-nowrap"
                     >
                       Claim
                     </button>
@@ -1262,7 +1303,7 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
                         href={purchaseUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs px-2 py-1 rounded bg-green-600/20 hover:bg-green-600/30 text-green-400 whitespace-nowrap inline-block text-center"
+                        className="text-xs px-2 py-1 rounded-md bg-green-500/10 hover:bg-green-500/20 text-green-400 border border-green-500/20 hover:border-green-500/30 transition-all whitespace-nowrap inline-block text-center"
                       >
                         Purchase
                       </a>
@@ -1273,7 +1314,7 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
               {isOwner && (
                 <button
                   onClick={() => handleDelete(item.id)}
-                  className="text-xs px-2 py-1 rounded bg-red-600/20 hover:bg-red-600/30 text-red-400 whitespace-nowrap"
+                  className="text-xs px-2 py-1 rounded-md bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 hover:border-red-500/30 transition-all whitespace-nowrap"
                 >
                   Delete
                 </button>
@@ -1302,6 +1343,76 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
           />
         ) : null;
       })()}
+
+      {/* Image Editor Modal */}
+      {editingImage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+          <div className="relative w-full max-w-4xl max-h-[90vh] bg-zinc-900 rounded-lg border border-zinc-700 p-6 overflow-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-white">Edit Image</h2>
+              <button
+                onClick={() => setEditingImage(null)}
+                className="text-zinc-400 hover:text-white transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <ImageCropper
+              image={editingImage.image}
+              originalFile={editingImage.file}
+              uploading={uploadingImage}
+              onCropComplete={async (croppedImage, mimeType) => {
+                setUploadingImage(true);
+                try {
+                  // Convert data URL to blob
+                  const response = await fetch(croppedImage);
+                  const blob = await response.blob();
+                  
+                  // Upload to Vercel Blob Storage
+                  const formData = new FormData();
+                  const fileExtension = mimeType.split('/')[1] || 'jpg';
+                  formData.append('file', blob, `item-${editingImage.itemId}-${Date.now()}.${fileExtension}`);
+                  
+                  const uploadResponse = await fetch('/api/wishlist/items/upload-image', {
+                    method: 'POST',
+                    body: formData,
+                  });
+                  
+                  if (!uploadResponse.ok) {
+                    const errorData = await uploadResponse.json();
+                    throw new Error(errorData.error || 'Failed to upload image');
+                  }
+                  
+                  const { url } = await uploadResponse.json();
+                  
+                  // Update item with new image URL
+                  const updateResponse = await fetch('/api/wishlist/items', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: editingImage.itemId, image: url }),
+                  });
+                  
+                  if (!updateResponse.ok) {
+                    const errorData = await updateResponse.json();
+                    throw new Error(errorData.error || 'Failed to update item');
+                  }
+                  
+                  await fetchItems();
+                  setEditingImage(null);
+                } catch (error: any) {
+                  console.error('Error updating image:', error);
+                  alert(error.message || 'Failed to update image. Please try again.');
+                } finally {
+                  setUploadingImage(false);
+                }
+              }}
+              onCancel={() => setEditingImage(null)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
