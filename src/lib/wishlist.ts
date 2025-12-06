@@ -295,7 +295,18 @@ export async function updateWishlistItem(
       
       // Only track if price actually changed
       if (currentPrice !== newPrice && newPrice) {
-        const history = currentItem.priceHistory ? JSON.parse(currentItem.priceHistory) : [];
+        let history: Array<{ price: string; date: number }> = [];
+        try {
+          if (currentItem.priceHistory) {
+            history = JSON.parse(currentItem.priceHistory);
+            if (!Array.isArray(history)) {
+              history = [];
+            }
+          }
+        } catch (e) {
+          console.error('Error parsing priceHistory:', e);
+          history = [];
+        }
         history.push({
           price: newPrice,
           date: now.getTime(),
@@ -361,7 +372,18 @@ export async function checkPriceAlerts(itemId: string, currentPrice: string | nu
   if (!item) return;
   
   // Get previous price from history
-  const history = item.priceHistory ? JSON.parse(item.priceHistory) : [];
+  let history: Array<{ price: string; date: number }> = [];
+  try {
+    if (item.priceHistory) {
+      history = JSON.parse(item.priceHistory);
+      if (!Array.isArray(history)) {
+        history = [];
+      }
+    }
+  } catch (e) {
+    console.error('Error parsing priceHistory:', e);
+    history = [];
+  }
   const previousPriceEntry = history.length > 1 ? history[history.length - 2] : null;
   const previousPriceNum = previousPriceEntry ? parsePrice(previousPriceEntry.price) : null;
   

@@ -118,7 +118,18 @@ export default function PriceAlertManager({ itemId, currentPrice, priceHistory }
     return price;
   };
 
-  const history = priceHistory ? JSON.parse(priceHistory) : [];
+  let history: Array<{ price: string; date: number }> = [];
+  try {
+    if (priceHistory) {
+      history = JSON.parse(priceHistory);
+      if (!Array.isArray(history)) {
+        history = [];
+      }
+    }
+  } catch (e) {
+    console.error('Error parsing priceHistory:', e);
+    history = [];
+  }
   const priceChange = history.length > 1 
     ? (() => {
         const latest = parsePrice(history[history.length - 1]?.price);

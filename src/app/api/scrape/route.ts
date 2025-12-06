@@ -363,55 +363,87 @@ export async function scrapeProductData(url: string) {
       }
     }
 
-    // Amazon-specific extraction (Amazon pages are heavily JavaScript-rendered, but we can try)
-    if (isAmazon) {
-      // First, try to extract from JSON-LD or inline JSON data (most reliable)
-      let amazonTitle = "";
-      let amazonPrice = "";
-      let amazonImage = "";
-      let amazonDescription = "";
-      
-      // Try to find product data in JSON-LD or script tags
-      $('script[type="application/ld+json"]').each((_, el) => {
-        try {
-          const jsonText = $(el).html() || "{}";
-          const json = JSON.parse(jsonText);
-          
-          if (Array.isArray(json)) {
-            const product = json.find((item: any) => item['@type'] === 'Product');
-            if (product) {
-              if (!amazonTitle && product.name) amazonTitle = product.name;
-              if (!amazonImage && product.image) {
-                amazonImage = Array.isArray(product.image) ? product.image[0] : product.image;
-              }
-              if (!amazonDescription && product.description) amazonDescription = product.description;
-              if (!amazonPrice && product.offers) {
-                const offer = Array.isArray(product.offers) ? product.offers[0] : product.offers;
-                if (offer?.price) {
-                  amazonPrice = `$${offer.price}`;
-                  if (offer.priceCurrency) {
-                    // Already formatted
+      // Amazon-specific extraction (Amazon pages are heavily JavaScript-rendered, but we can try)
+      if (isAmazon) {
+        // First, try to extract from JSON-LD or inline JSON data (most reliable)
+        let amazonTitle = "";
+        let amazonPrice = "";
+        let amazonImage = "";
+        let amazonDescription = "";
+        
+        // Try to find product data in JSON-LD or script tags
+        $('script[type="application/ld+json"]').each((_, el) => {
+          try {
+            const jsonText = $(el).html() || "{}";
+            const json = JSON.parse(jsonText);
+            
+            if (Array.isArray(json)) {
+              const product = json.find((item: any) => item['@type'] === 'Product');
+              if (product) {
+                if (!amazonTitle && product.name) amazonTitle = product.name;
+                if (!amazonImage && product.image) {
+                  amazonImage = Array.isArray(product.image) ? product.image[0] : product.image;
+                }
+                if (!amazonDescription && product.description) amazonDescription = product.description;
+                if (!amazonPrice && product.offers) {
+                  const offer = Array.isArray(product.offers) ? product.offers[0] : product.offers;
+                  if (offer?.price) {
+                    const priceValue = typeof offer.price === 'string' ? offer.price : offer.price.toString();
+                    amazonPrice = `$${priceValue}`;
                   }
                 }
               }
+            } else if (json['@type'] === 'Product') {
+              if (!amazonTitle && json.name) amazonTitle = json.name;
+              if (!amazonImage && json.image) {
+                amazonImage = Array.isArray(json.image) ? json.image[0] : json.image;
+              }
+              if (!amazonDescription && json.description) amazonDescription = json.description;
+              if (!amazonPrice && json.offers) {
+                const offer = Array.isArray(json.offers) ? json.offers[0] : json.offers;
+                if (offer?.price) {
+                  const priceValue = typeof offer.price === 'string' ? offer.price : offer.price.toString();
+                  amazonPrice = `$${priceValue}`;
+                }
+              }
             }
-          } else if (json['@type'] === 'Product') {
-            if (!amazonTitle && json.name) amazonTitle = json.name;
-            if (!amazonImage && json.image) {
-              amazonImage = Array.isArray(json.image) ? json.image[0] : json.image;
-            }
-            if (!amazonDescription && json.description) amazonDescription = json.description;
-            if (!amazonPrice && json.offers) {
-              const offer = Array.isArray(json.offers) ? json.offers[0] : json.offers;
-              if (offer?.price) {
-                amazonPrice = `$${offer.price}`;
+          } catch (e) {
+            // Ignore parse errors
+          }
+        });
+        
+        // Try to extract from Amazon's inline JavaScript data
+        $('script').each((_, el) => {
+          if (amazonPrice) return; // Already found
+          const scriptText = $(el).html() || "";
+          // Look for price in various Amazon data structures
+          const pricePatterns = [
+            /"price"\s*:\s*"([^"]+)"/,
+            /"price"\s*:\s*(\d+\.?\d*)/,
+            /"displayPrice"\s*:\s*"([^"]+)"/,
+            /"formattedPrice"\s*:\s*"([^"]+)"/,
+            /data-price="([^"]+)"/,
+            /priceToPay["\s]*:\s*["\s]*([^"]+)/,
+          ];
+          
+          for (const pattern of pricePatterns) {
+            const match = scriptText.match(pattern);
+            if (match && match[1]) {
+              let priceValue = match[1];
+              // Clean up the price value
+              if (!priceValue.includes('$')) {
+                const numMatch = priceValue.match(/[\d,]+\.?\d*/);
+                if (numMatch) {
+                  amazonPrice = `$${numMatch[0]}`;
+                  break;
+                }
+              } else {
+                amazonPrice = priceValue;
+                break;
               }
             }
           }
-        } catch (e) {
-          // Ignore parse errors
-        }
-      });
+        });
       
       // Try to extract from window.ue_* or other inline data
       const scriptTags = $('script').toArray();
@@ -508,17 +540,23 @@ export async function scrapeProductData(url: string) {
         // Try new Amazon price selectors (2024+ layout)
         if (!amazonPrice) {
           const newPriceSelectors = [
-            '.a-price.a-text-price[data-a-color="base"]',
+            '.a-price.a-text-price[data-a-color="base"] .a-offscreen',
             '.a-price .a-offscreen',
             '[data-a-color="price"] .a-offscreen',
-            '.a-price-whole',
             '.apexPriceToPay .a-offscreen',
+            '.a-price.a-text-price .a-offscreen',
+            '#priceblock_ourprice .a-offscreen',
+            '#priceblock_dealprice .a-offscreen',
+            '.a-price-whole',
+            '.a-price.a-text-price.a-size-medium .a-offscreen',
+            '.a-price.a-text-price.a-size-base .a-offscreen',
           ];
           
           for (const selector of newPriceSelectors) {
             const priceEl = $(selector).first();
             if (priceEl.length) {
               let priceText = priceEl.text().trim();
+              
               // If it's a whole price, try to get cents too
               if (selector.includes('a-price-whole')) {
                 const centsEl = priceEl.siblings('.a-price-fraction');
@@ -527,13 +565,37 @@ export async function scrapeProductData(url: string) {
                 }
               }
               
+              // Also check parent for whole/fraction structure
+              if (!priceText || priceText.length < 2) {
+                const parent = priceEl.parent();
+                const whole = parent.find('.a-price-whole').text().trim();
+                const fraction = parent.find('.a-price-fraction').text().trim();
+                if (whole) {
+                  priceText = whole + (fraction ? '.' + fraction : '');
+                }
+              }
+              
               const priceMatch = priceText.match(/[\d,]+\.?\d*/);
               if (priceMatch) {
                 const priceValue = parseFloat(priceMatch[0].replace(/,/g, ''));
-                if (priceValue >= 1 && priceValue <= 100000) { // Reasonable price range
+                if (priceValue >= 0.01 && priceValue <= 100000) { // Reasonable price range
                   amazonPrice = `$${priceMatch[0]}`;
                   break;
                 }
+              }
+            }
+          }
+        }
+        
+        // Try extracting from data attributes
+        if (!amazonPrice) {
+          const priceData = $('[data-a-color="price"]').first().attr('data-a-color-price');
+          if (priceData) {
+            const priceMatch = priceData.match(/[\d,]+\.?\d*/);
+            if (priceMatch) {
+              const priceValue = parseFloat(priceMatch[0].replace(/,/g, ''));
+              if (priceValue >= 0.01 && priceValue <= 100000) {
+                amazonPrice = `$${priceMatch[0]}`;
               }
             }
           }
