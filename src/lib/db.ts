@@ -11,22 +11,30 @@ function getDb() {
 
   const databaseUrl = process.env.DATABASE_URL;
 
-  if (databaseUrl && databaseUrl.startsWith('libsql://')) {
+  if (!databaseUrl) {
+    throw new Error('DATABASE_URL environment variable is required');
+  }
+
+  if (databaseUrl.startsWith('libsql://')) {
     // Production: Use Turso/libSQL
     if (!process.env.TURSO_AUTH_TOKEN) {
       throw new Error('TURSO_AUTH_TOKEN is required when using Turso database');
     }
     
-    // Dynamic import to avoid bundling issues
-    const { createClient } = require('@libsql/client');
-    const { drizzle } = require('drizzle-orm/libsql');
-    
-    const client = createClient({
-      url: databaseUrl,
-      authToken: process.env.TURSO_AUTH_TOKEN,
-    });
-    
-    dbInstance = drizzle(client, { schema });
+    try {
+      // Dynamic import to avoid bundling issues
+      const { createClient } = require('@libsql/client');
+      const { drizzle } = require('drizzle-orm/libsql');
+      
+      const client = createClient({
+        url: databaseUrl,
+        authToken: process.env.TURSO_AUTH_TOKEN,
+      });
+      
+      dbInstance = drizzle(client, { schema });
+    } catch (error: any) {
+      throw new Error(`Failed to initialize Turso database: ${error.message}`);
+    }
   } else {
     // Development: Use local SQLite file
     // Only load better-sqlite3 in development (not on Vercel)
