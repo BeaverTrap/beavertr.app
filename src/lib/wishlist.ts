@@ -215,7 +215,9 @@ export async function addWishlistItem(
         if (process.env.VERCEL || process.env.NEXT_PHASE === 'phase-production-build') {
           throw new Error('better-sqlite3 not available on Vercel');
         }
-        const Database = require('better-sqlite3');
+        // Use Function constructor to create a truly dynamic require that webpack/turbopack can't analyze
+        const requireBetterSqlite3 = new Function('moduleName', 'return require(moduleName)');
+        const Database = requireBetterSqlite3('better-sqlite3');
         const sqlite = new Database('./dev.db');
         
         const columns = ['id', 'title', 'url', 'wishlistId', 'userId', 'createdAt', 'updatedAt'];

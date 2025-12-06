@@ -28,9 +28,13 @@ export function initDatabase() {
       if (process.env.VERCEL || process.env.NEXT_PHASE === 'phase-production-build') {
         throw new Error('better-sqlite3 not available on Vercel');
       }
-      const Database = require('better-sqlite3');
-      const { drizzle } = require('drizzle-orm/better-sqlite3');
-      const { migrate } = require('drizzle-orm/better-sqlite3/migrator');
+      // Use Function constructor to create a truly dynamic require that webpack/turbopack can't analyze
+      const requireBetterSqlite3 = new Function('moduleName', 'return require(moduleName)');
+      const Database = requireBetterSqlite3('better-sqlite3');
+      const drizzleModule = requireBetterSqlite3('drizzle-orm/better-sqlite3');
+      const { drizzle } = drizzleModule;
+      const migrateModule = requireBetterSqlite3('drizzle-orm/better-sqlite3/migrator');
+      const { migrate } = migrateModule;
       
       const sqlite = new Database('./dev.db');
       const db = drizzle(sqlite, { schema });

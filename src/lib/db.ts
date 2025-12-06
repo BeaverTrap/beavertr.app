@@ -9,6 +9,14 @@ function getDb() {
     return dbInstance;
   }
 
+  // On Vercel, we MUST use Turso/libSQL - never allow better-sqlite3
+  if (process.env.VERCEL || process.env.NEXT_PHASE === 'phase-production-build') {
+    const databaseUrl = process.env.DATABASE_URL;
+    if (!databaseUrl || !databaseUrl.startsWith('libsql://')) {
+      throw new Error('On Vercel, DATABASE_URL must be set to a Turso (libsql://) database URL. SQLite file database is not supported.');
+    }
+  }
+
   const databaseUrl = process.env.DATABASE_URL;
 
   if (!databaseUrl) {
@@ -37,31 +45,20 @@ function getDb() {
     }
   } else {
     // Development: Use local SQLite file
-    // Only load better-sqlite3 in development (not on Vercel or during build)
-    if (process.env.VERCEL || process.env.NEXT_PHASE === 'phase-production-build') {
-      throw new Error('SQLite file database not supported on Vercel. Please use Turso (libsql://) database URL.');
-    }
-    
-    // Check if better-sqlite3 is available before requiring it
-    // This prevents build failures if the module is not installed
+    // This branch should NEVER execute on Vercel (checked above)
+    // Use dynamic require with Function constructor to prevent static analysis
     try {
-      // Use a function to require it only when needed
-      const loadBetterSqlite3 = () => {
-        try {
-          return require('better-sqlite3');
-        } catch (e: any) {
-          if (e.code === 'MODULE_NOT_FOUND') {
-            throw new Error('better-sqlite3 is not installed. Install it for local development: npm install better-sqlite3');
-          }
-          throw e;
-        }
-      };
-      
-      const Database = loadBetterSqlite3();
-      const { drizzle } = require('drizzle-orm/better-sqlite3');
+      // Use Function constructor to create a truly dynamic require that webpack/turbopack can't analyze
+      const requireBetterSqlite3 = new Function('moduleName', 'return require(moduleName)');
+      const Database = requireBetterSqlite3('better-sqlite3');
+      const drizzleModule = requireBetterSqlite3('drizzle-orm/better-sqlite3');
+      const { drizzle } = drizzleModule;
       const sqlite = new Database('./dev.db');
       dbInstance = drizzle(sqlite, { schema });
     } catch (error: any) {
+      if (error.code === 'MODULE_NOT_FOUND' || error.message?.includes('better-sqlite3')) {
+        throw new Error('better-sqlite3 is not installed. Install it for local development: npm install better-sqlite3');
+      }
       throw new Error(`Failed to load better-sqlite3. This is only available in development. Error: ${error.message}`);
     }
   }
