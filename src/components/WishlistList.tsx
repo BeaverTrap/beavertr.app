@@ -396,39 +396,31 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
   return (
     <div>
       {/* Search, Filter, and Sort Controls */}
-      <div className="mb-4 space-y-2">
-        {/* Search Bar */}
-        <div className="flex gap-2 items-center">
-          <button
-            onClick={() => setShowSearch(!showSearch)}
-            className="p-1.5 rounded-lg bg-zinc-900/50 hover:bg-zinc-800/50 text-zinc-400 hover:text-white transition-all"
-            title={showSearch ? "Hide search" : "Show search"}
-          >
-            <svg className={`w-4 h-4 transition-transform ${showSearch ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+      <div className="mb-6 space-y-3">
+        {/* Search Bar - Always visible */}
+        <div className="flex gap-3 items-center">
+          <div className="flex-1 relative">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
-          </button>
-          {showSearch && (
-            <div className="flex-1 relative">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search..."
-                className="w-full px-3 py-1.5 text-sm rounded-lg bg-zinc-900/50 border border-zinc-800/50 text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white transition-colors"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              )}
-            </div>
-          )}
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search items..."
+              className="w-full pl-10 pr-10 py-2.5 text-sm rounded-lg bg-zinc-900/50 border border-zinc-800/50 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500/50 transition-all"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
           {isOwner && (
             <button
               onClick={() => {
@@ -438,103 +430,150 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
                   setShowBulkActions(false);
                 }
               }}
-              className={`px-4 py-2 rounded-xl border transition-colors ${
+              className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
                 bulkMode 
-                  ? "bg-blue-600/80 border-blue-500 text-white" 
-                  : "bg-zinc-800/80 border-zinc-700/50 text-white hover:bg-zinc-700/80"
+                  ? "bg-blue-500 text-white" 
+                  : "bg-zinc-800/50 text-zinc-300 hover:bg-zinc-700/50 hover:text-white border border-zinc-700/50"
               }`}
             >
-              {bulkMode ? "Cancel" : "Select"}
+              {bulkMode ? (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  Cancel
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                  Select
+                </>
+              )}
             </button>
           )}
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className="p-1.5 rounded-lg bg-zinc-900/50 hover:bg-zinc-800/50 text-zinc-400 hover:text-white transition-all"
+            className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+              showFilters
+                ? "bg-zinc-700/50 text-white"
+                : "bg-zinc-800/50 text-zinc-300 hover:bg-zinc-700/50 hover:text-white border border-zinc-700/50"
+            }`}
           >
-            <svg className={`w-4 h-4 transition-transform ${showFilters ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+            </svg>
+            Filters
+            <svg className={`w-3 h-3 transition-transform ${showFilters ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
           </button>
         </div>
 
-        {/* Bulk Actions Bar */}
+        {/* Bulk Actions Bar - Sticky at bottom when items selected */}
         {isOwner && bulkMode && selectedItems.size > 0 && (
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-blue-900/20 border border-blue-700/50">
-            <span className="text-sm text-blue-300">
-              {selectedItems.size} item{selectedItems.size !== 1 ? 's' : ''} selected
-            </span>
-            <div className="flex gap-2 ml-auto">
-              <button
-                onClick={async () => {
-                  if (confirm(`Delete ${selectedItems.size} item(s)?`)) {
-                    try {
-                      await Promise.all(
-                        Array.from(selectedItems).map(id =>
-                          fetch(`/api/wishlist/items?id=${id}`, { method: "DELETE" })
-                        )
-                      );
-                      setSelectedItems(new Set());
-                      setBulkMode(false);
-                      fetchItems();
-                    } catch (error) {
-                      console.error("Error deleting items:", error);
-                      alert("Error deleting items");
-                    }
-                  }
-                }}
-                className="px-3 py-1.5 text-sm rounded bg-red-600 hover:bg-red-700 text-white"
-              >
-                Delete Selected
-              </button>
-              <button
-                onClick={() => {
-                  const newPriority = prompt("Set priority (1 = High, 0 = Normal, -1 = Low):");
-                  if (newPriority !== null) {
-                    const priority = parseInt(newPriority);
-                    if (!isNaN(priority)) {
-                      Promise.all(
-                        Array.from(selectedItems).map(id =>
-                          fetch("/api/wishlist/items", {
-                            method: "PATCH",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ id, priority }),
-                          })
-                        )
-                      ).then(() => {
-                        setSelectedItems(new Set());
-                        setBulkMode(false);
-                        fetchItems();
-                      });
-                    }
-                  }
-                }}
-                className="px-3 py-1.5 text-sm rounded bg-zinc-700 hover:bg-zinc-600 text-white"
-              >
-                Set Priority
-              </button>
-              <button
-                onClick={() => {
-                  const category = prompt("Set category:");
-                  if (category !== null) {
-                    Promise.all(
-                      Array.from(selectedItems).map(id =>
-                        fetch("/api/wishlist/items", {
-                          method: "PATCH",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ id, category: category.trim() || null }),
-                        })
-                      )
-                    ).then(() => {
-                      setSelectedItems(new Set());
-                      setBulkMode(false);
-                      fetchItems();
-                    });
-                  }
-                }}
-                className="px-3 py-1.5 text-sm rounded bg-zinc-700 hover:bg-zinc-600 text-white"
-              >
-                Set Category
-              </button>
+          <div className="fixed bottom-0 left-0 right-0 z-50 bg-zinc-900 border-t border-zinc-800 shadow-2xl">
+            <div className="max-w-7xl mx-auto px-4 py-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="px-3 py-1.5 rounded-lg bg-blue-500/20 border border-blue-500/30">
+                    <span className="text-sm font-medium text-blue-400">
+                      {selectedItems.size} item{selectedItems.size !== 1 ? 's' : ''} selected
+                    </span>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={async () => {
+                      const category = prompt("Set category:");
+                      if (category !== null) {
+                        try {
+                          await Promise.all(
+                            Array.from(selectedItems).map(id =>
+                              fetch("/api/wishlist/items", {
+                                method: "PATCH",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ id, category: category.trim() || null }),
+                              })
+                            )
+                          );
+                          setSelectedItems(new Set());
+                          setBulkMode(false);
+                          fetchItems();
+                        } catch (error) {
+                          console.error("Error updating category:", error);
+                          alert("Error updating category");
+                        }
+                      }
+                    }}
+                    className="px-4 py-2 text-sm font-medium rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-700 transition-all flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                    </svg>
+                    Category
+                  </button>
+                  <button
+                    onClick={async () => {
+                      const newPriority = prompt("Set priority (1 = High, 0 = Normal, -1 = Low):");
+                      if (newPriority !== null) {
+                        const priority = parseInt(newPriority);
+                        if (!isNaN(priority)) {
+                          try {
+                            await Promise.all(
+                              Array.from(selectedItems).map(id =>
+                                fetch("/api/wishlist/items", {
+                                  method: "PATCH",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ id, priority }),
+                                })
+                              )
+                            );
+                            setSelectedItems(new Set());
+                            setBulkMode(false);
+                            fetchItems();
+                          } catch (error) {
+                            console.error("Error updating priority:", error);
+                            alert("Error updating priority");
+                          }
+                        }
+                      }
+                    }}
+                    className="px-4 py-2 text-sm font-medium rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-700 transition-all flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                    </svg>
+                    Priority
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (confirm(`Delete ${selectedItems.size} item(s)?`)) {
+                        try {
+                          await Promise.all(
+                            Array.from(selectedItems).map(id =>
+                              fetch(`/api/wishlist/items?id=${id}`, { method: "DELETE" })
+                            )
+                          );
+                          setSelectedItems(new Set());
+                          setBulkMode(false);
+                          fetchItems();
+                        } catch (error) {
+                          console.error("Error deleting items:", error);
+                          alert("Error deleting items");
+                        }
+                      }
+                    }}
+                    className="px-4 py-2 text-sm font-medium rounded-lg bg-red-600 hover:bg-red-700 text-white transition-all flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Delete
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -686,7 +725,7 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
         </div>
       ) : (
         <div 
-          className="grid gap-3 md:grid-cols-2 lg:grid-cols-3"
+          className={`grid gap-3 md:grid-cols-2 lg:grid-cols-3 ${isOwner && bulkMode && selectedItems.size > 0 ? 'pb-24' : ''}`}
           onDragOver={(e) => {
             e.preventDefault();
             if (isOwner && !bulkMode && draggedItem) {
