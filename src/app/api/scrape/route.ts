@@ -1,9 +1,17 @@
 import { NextResponse } from "next/server";
 import * as cheerio from "cheerio";
 
-// Lazy load puppeteer only for Amazon (optional - may not work on Vercel)
+// Check if we're on Vercel (Puppeteer doesn't work well on serverless)
+const isVercel = process.env.VERCEL === '1' || process.env.VERCEL_ENV;
+
+// Lazy load puppeteer only for Amazon (disabled on Vercel)
 let puppeteer: any = null;
 async function getPuppeteer() {
+  // Skip Puppeteer entirely on Vercel
+  if (isVercel) {
+    return null;
+  }
+  
   try {
     if (!puppeteer) {
       puppeteer = await import("puppeteer");
@@ -203,8 +211,8 @@ export async function scrapeProductData(url: string) {
                       url.includes("fangamer.com") ||
                       (url.includes("collections/") && url.includes("/products/"));
     
-    // For Amazon, try Puppeteer first (if available), then fall back to cheerio
-    if (isAmazon) {
+    // For Amazon, try Puppeteer first (if not on Vercel), then fall back to cheerio
+    if (isAmazon && !isVercel) {
       try {
         console.log("Attempting Puppeteer for Amazon URL:", url);
         const amazonData = await scrapeAmazonWithPuppeteer(url);
@@ -229,10 +237,12 @@ export async function scrapeProductData(url: string) {
           console.warn("Puppeteer returned empty data, falling back to cheerio");
         }
       } catch (puppeteerError: any) {
-        // Puppeteer often fails on Vercel/serverless - this is expected
+        // Puppeteer often fails on serverless - this is expected
         console.warn("Puppeteer not available or failed, using cheerio fallback:", puppeteerError.message);
-        // Fall through to cheerio scraping - this is the normal path on Vercel
+        // Fall through to cheerio scraping
       }
+    } else if (isAmazon && isVercel) {
+      console.log("Skipping Puppeteer on Vercel, using cheerio for Amazon URL:", url);
     }
     
     // Regular scraping with cheerio for non-Amazon or as fallback
