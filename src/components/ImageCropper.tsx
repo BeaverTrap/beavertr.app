@@ -446,7 +446,7 @@ export default function ImageCropper({
             image={image}
             crop={crop}
             zoom={zoom}
-            aspect={aspect}
+            aspect={aspect === undefined ? undefined : aspect}
             onCropChange={onCropChange}
             onZoomChange={onZoomChange}
             onCropComplete={onCropCompleteCallback}

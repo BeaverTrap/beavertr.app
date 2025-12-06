@@ -686,10 +686,10 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
         </div>
       ) : (
         <div 
-          className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
+          className="grid gap-3 md:grid-cols-2 lg:grid-cols-3"
           onDragOver={(e) => {
+            e.preventDefault();
             if (isOwner && !bulkMode && draggedItem) {
-              e.preventDefault();
               e.dataTransfer.dropEffect = 'move';
             }
           }}
@@ -754,27 +754,41 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
           onDrop={async (e) => {
             e.preventDefault();
             e.stopPropagation();
-            (e.currentTarget as HTMLElement).classList.remove('ring-2', 'ring-blue-500/50');
+            const target = e.currentTarget as HTMLElement;
+            target.classList.remove('drag-over', 'ring-2', 'ring-blue-500/50', 'bg-blue-500/5');
             
-            if (!isOwner || bulkMode || !draggedItem || draggedItem === item.id) return;
+            if (!isOwner || bulkMode || !draggedItem || draggedItem === item.id) {
+              setDraggedItem(null);
+              return;
+            }
             
-            // Get all items in the wishlist (not filtered/sorted)
-            const allItems = [...items];
+            // Get all items in the wishlist - use filteredAndSortedItems to maintain current view order
+            // But we need to work with all items for displayOrder
+            const allItems = [...items].sort((a, b) => {
+              // Sort by displayOrder if available, otherwise by createdAt
+              const orderA = a.displayOrder ?? 0;
+              const orderB = b.displayOrder ?? 0;
+              if (orderA !== orderB) return orderA - orderB;
+              return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+            });
+            
             const draggedIndex = allItems.findIndex(i => i.id === draggedItem);
             const targetIndex = allItems.findIndex(i => i.id === item.id);
             
-            if (draggedIndex === -1 || targetIndex === -1) return;
+            if (draggedIndex === -1 || targetIndex === -1) {
+              setDraggedItem(null);
+              return;
+            }
             
-            // Calculate new display orders based on current order
+            // Calculate new display orders
             const itemsToUpdate: Array<{ id: string; displayOrder: number }> = [];
             const newItems = [...allItems];
             const [dragged] = newItems.splice(draggedIndex, 1);
             newItems.splice(targetIndex, 0, dragged);
             
-            // Update display orders - use a base offset to ensure they're unique
-            const baseOrder = Math.max(...allItems.map(i => i.displayOrder || 0), 0);
+            // Update display orders - start from 0
             newItems.forEach((item, index) => {
-              itemsToUpdate.push({ id: item.id, displayOrder: baseOrder + index + 1 });
+              itemsToUpdate.push({ id: item.id, displayOrder: index });
             });
             
             // Save new order
@@ -785,11 +799,17 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
                     method: "PATCH",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ id, displayOrder }),
+                  }).then(res => {
+                    if (!res.ok) {
+                      throw new Error(`Failed to update item ${id}`);
+                    }
+                    return res.json();
                   })
                 )
               );
               setDraggedItem(null);
-              fetchItems();
+              // Force refresh
+              await fetchItems();
             } catch (error) {
               console.error("Error reordering items:", error);
               setDraggedItem(null);
@@ -799,16 +819,16 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
             (e.target as HTMLElement).style.opacity = '1';
             setDraggedItem(null);
           }}
-          className={`group relative bg-zinc-900/40 backdrop-blur-sm rounded-xl border border-zinc-800/50 transition-all duration-200 ${
+          className={`group relative bg-zinc-900/30 backdrop-blur-sm rounded-2xl border transition-all duration-200 ${
             item.isPurchased
-              ? "opacity-50 border-green-500/20"
+              ? "opacity-40 border-green-500/10"
               : item.isClaimed
               ? "border-yellow-500/20"
               : selectedItems.has(item.id)
               ? "border-blue-500/50 ring-1 ring-blue-500/30"
               : isDragging
-              ? "opacity-50 scale-95"
-              : "hover:border-zinc-700/70 hover:bg-zinc-900/60"
+              ? "opacity-30 scale-95 border-blue-500/30"
+              : "border-zinc-800/30 hover:border-zinc-700/50 hover:bg-zinc-900/40"
           } ${isOwner && !bulkMode ? "cursor-grab active:cursor-grabbing" : ""}`}
         >
           {/* Bulk Selection Checkbox */}
@@ -868,14 +888,14 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
             </div>
           )}
 
-          <div className="p-3 space-y-2">
+          <div className="p-4 space-y-2.5">
           {/* Store Name */}
           <div>
             <a
               href={clickableUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-block px-2 py-0.5 text-[10px] uppercase tracking-wide rounded-full bg-zinc-800/50 text-zinc-400 hover:text-zinc-300 transition-colors"
+              className="inline-block px-2 py-0.5 text-[10px] uppercase tracking-wider rounded-full bg-zinc-800/40 text-zinc-500 hover:text-zinc-400 transition-colors"
               title={`View on ${getStoreName(item.url)}`}
             >
               {getStoreName(item.url)}
@@ -889,13 +909,13 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
             rel="noopener noreferrer"
             className="block"
           >
-            <h3 className="text-sm font-medium text-white line-clamp-2 hover:text-blue-400 transition-colors leading-snug">
+            <h3 className="text-sm font-medium text-white line-clamp-2 hover:text-blue-400 transition-colors leading-snug mb-1">
               {item.title}
             </h3>
           </a>
 
           {/* Price */}
-          <div className="text-base font-semibold text-green-400">
+          <div className="text-lg font-bold text-green-400">
             {refreshing.has(item.id) ? (
               <span className="text-zinc-500 text-sm">Updating...</span>
             ) : item.price ? (
@@ -1301,7 +1321,7 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
           <ItemComments itemId={item.id} isOwner={isOwner} />
 
           {/* Actions */}
-          <div className="px-3 pb-3 pt-2 flex flex-wrap items-center gap-1.5 border-t border-zinc-800/50">
+          <div className="px-4 pb-4 pt-3 flex flex-wrap items-center gap-2 border-t border-zinc-800/30">
             {(() => {
               // Validate affiliate URL - make sure it's a valid product page
               const isValidAffiliateUrl = item.affiliateUrl && (() => {
