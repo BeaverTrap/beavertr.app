@@ -107,6 +107,8 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
   const [editingSize, setEditingSize] = useState<{ [key: string]: string }>({});
   const [editingImage, setEditingImage] = useState<{ itemId: string; image: string; file?: File } | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [draggedItem, setDraggedItem] = useState<string | null>(null);
+  const [editingCategory, setEditingCategory] = useState<{ [key: string]: string }>({});
   
   // Search, filter, and sort state
   const [searchQuery, setSearchQuery] = useState("");
@@ -379,6 +381,10 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
       } else if (sortBy === "order") {
         return (a.displayOrder || 0) - (b.displayOrder || 0); // By display order
       } else { // date (default)
+        // When not sorting by order, still respect displayOrder if items have it set
+        if (a.displayOrder !== null && b.displayOrder !== null) {
+          return (a.displayOrder || 0) - (b.displayOrder || 0);
+        }
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(); // Newest first
       }
     });
@@ -713,19 +719,87 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
         
         const clickableUrl = getClickableUrl();
         
+        const isDragging = draggedItem === item.id;
+        
         return (
         <div
           key={item.id}
-          className={`p-4 rounded-lg bg-zinc-800 border transition-colors overflow-hidden ${
+          draggable={isOwner && !bulkMode}
+          onDragStart={(e) => {
+            setDraggedItem(item.id);
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', item.id);
+          }}
+          onDragOver={(e) => {
+            if (isOwner && !bulkMode && draggedItem && draggedItem !== item.id) {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = 'move';
+            }
+          }}
+          onDrop={async (e) => {
+            e.preventDefault();
+            if (!isOwner || bulkMode || !draggedItem || draggedItem === item.id) return;
+            
+            // Get all items in the wishlist (not filtered/sorted)
+            const allItems = [...items];
+            const draggedIndex = allItems.findIndex(i => i.id === draggedItem);
+            const targetIndex = allItems.findIndex(i => i.id === item.id);
+            
+            if (draggedIndex === -1 || targetIndex === -1) return;
+            
+            // Calculate new display orders based on current order
+            const itemsToUpdate: Array<{ id: string; displayOrder: number }> = [];
+            const newItems = [...allItems];
+            const [dragged] = newItems.splice(draggedIndex, 1);
+            newItems.splice(targetIndex, 0, dragged);
+            
+            // Update display orders - use a base offset to ensure they're unique
+            const baseOrder = Math.max(...allItems.map(i => i.displayOrder || 0), 0);
+            newItems.forEach((item, index) => {
+              itemsToUpdate.push({ id: item.id, displayOrder: baseOrder + index + 1 });
+            });
+            
+            // Save new order
+            try {
+              await Promise.all(
+                itemsToUpdate.map(({ id, displayOrder }) =>
+                  fetch("/api/wishlist/items", {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ id, displayOrder }),
+                  })
+                )
+              );
+              setDraggedItem(null);
+              fetchItems();
+            } catch (error) {
+              console.error("Error reordering items:", error);
+              setDraggedItem(null);
+            }
+          }}
+          onDragEnd={() => {
+            setDraggedItem(null);
+          }}
+          className={`p-4 rounded-lg bg-zinc-800 border transition-all overflow-hidden ${
             item.isPurchased
-              ? "border-green-600 opacity-60"
+              ? "border-green-600/50 opacity-60"
               : item.isClaimed
-              ? "border-yellow-600"
+              ? "border-yellow-600/50"
               : selectedItems.has(item.id)
               ? "border-blue-500 ring-2 ring-blue-500/50"
-              : "border-zinc-700 hover:border-zinc-600"
-          } ${isOwner && !bulkMode && sortBy === "order" ? "cursor-move" : ""}`}
+              : isDragging
+              ? "border-blue-400 opacity-50"
+              : "border-zinc-700/50 hover:border-zinc-600/70"
+          } ${isOwner && !bulkMode ? "cursor-move hover:shadow-lg" : ""}`}
         >
+          {/* Drag handle indicator */}
+          {isOwner && !bulkMode && (
+            <div className="absolute top-2 left-2 text-zinc-500 hover:text-zinc-400 transition-colors pointer-events-none">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+              </svg>
+            </div>
+          )}
           {/* Bulk Selection Checkbox */}
           {isOwner && bulkMode && (
             <div className="mb-2">
@@ -790,7 +864,7 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
               href={clickableUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-block px-2 py-1 text-xs rounded bg-zinc-700/50 text-zinc-300 border border-zinc-600/50 hover:bg-zinc-600/50 hover:text-white transition-colors"
+              className="inline-block px-2 py-0.5 text-xs rounded-md bg-zinc-800/30 text-zinc-300 border border-zinc-700/30 hover:bg-zinc-700/40 hover:text-white transition-all"
               title={`View on ${getStoreName(item.url)}`}
             >
               {getStoreName(item.url)}
@@ -804,13 +878,13 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
             rel="noopener noreferrer"
             className="block"
           >
-            <h3 className="text-lg font-semibold text-white mb-2 line-clamp-2 hover:text-blue-400 transition-colors cursor-pointer">
+            <h3 className="text-base font-semibold text-white mb-2 line-clamp-2 hover:text-blue-400 transition-colors cursor-pointer leading-tight">
               {item.title}
             </h3>
           </a>
 
           {/* Price */}
-          <div className="text-xl font-bold text-green-400 mb-2">
+          <div className="text-lg font-bold text-green-400 mb-2">
             {refreshing.has(item.id) ? (
               <span className="text-zinc-500 text-sm">Updating...</span>
             ) : item.price ? (
@@ -884,42 +958,104 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
           })()}
 
           {/* Status badges */}
-          <div className="flex gap-2 mb-3 flex-wrap">
+          <div className="flex gap-1.5 mb-3 flex-wrap items-center">
             {item.isPurchased && (
-              <span className="px-2 py-1 text-xs rounded bg-green-600/20 text-green-400">
+              <span className="px-2 py-0.5 text-xs rounded-md bg-green-500/10 text-green-400 border border-green-500/20">
                 ✓ Purchased
               </span>
             )}
             {item.claimStatus === 'purchased' && (
-              <span className="px-2 py-1 text-xs rounded bg-green-600/20 text-green-400">
-                ✓ Purchased (with proof)
+              <span className="px-2 py-0.5 text-xs rounded-md bg-green-500/10 text-green-400 border border-green-500/20">
+                ✓ Purchased
               </span>
             )}
             {item.claimStatus === 'pending' && (
-              <span className="px-2 py-1 text-xs rounded bg-yellow-600/20 text-yellow-400">
-                ⏳ Claim Pending
+              <span className="px-2 py-0.5 text-xs rounded-md bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
+                ⏳ Pending
               </span>
             )}
             {item.claimStatus === 'confirmed' && !item.isPurchased && (
-              <span className="px-2 py-1 text-xs rounded bg-green-600/20 text-green-400">
-                ✓ Claim Confirmed
+              <span className="px-2 py-0.5 text-xs rounded-md bg-green-500/10 text-green-400 border border-green-500/20">
+                ✓ Confirmed
               </span>
             )}
             {item.isClaimed && item.claimStatus !== 'pending' && item.claimStatus !== 'confirmed' && item.claimStatus !== 'purchased' && !item.isPurchased && (
-              <span className="px-2 py-1 text-xs rounded bg-yellow-600/20 text-yellow-400">
+              <span className="px-2 py-0.5 text-xs rounded-md bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
                 Claimed
               </span>
             )}
             {item.priority === 1 && (
-              <span className="px-2 py-1 text-xs rounded bg-red-600/20 text-red-400">
+              <span className="px-2 py-0.5 text-xs rounded-md bg-red-500/10 text-red-400 border border-red-500/20">
                 High Priority
               </span>
             )}
-            {item.category && (
-              <span className="px-2 py-1 text-xs rounded bg-blue-600/20 text-blue-400">
+            {/* Category - editable for owners */}
+            {isOwner ? (
+              <div className="flex items-center gap-1">
+                {editingCategory[item.id] !== undefined ? (
+                  <input
+                    type="text"
+                    value={editingCategory[item.id]}
+                    onChange={(e) => {
+                      setEditingCategory(prev => ({ ...prev, [item.id]: e.target.value }));
+                    }}
+                    onBlur={async (e) => {
+                      const newCategory = e.target.value.trim();
+                      setEditingCategory(prev => {
+                        const newState = { ...prev };
+                        delete newState[item.id];
+                        return newState;
+                      });
+                      if (newCategory !== (item.category || '')) {
+                        try {
+                          await fetch("/api/wishlist/items", {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ id: item.id, category: newCategory || null }),
+                          });
+                          fetchItems();
+                        } catch (error) {
+                          console.error("Error updating category:", error);
+                        }
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.currentTarget.blur();
+                      }
+                      if (e.key === "Escape") {
+                        setEditingCategory(prev => {
+                          const newState = { ...prev };
+                          delete newState[item.id];
+                          return newState;
+                        });
+                      }
+                    }}
+                    placeholder="Category"
+                    autoFocus
+                    className="px-2 py-0.5 text-xs rounded-md bg-zinc-900/50 border border-zinc-700/30 text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-blue-500/50 w-24"
+                  />
+                ) : (
+                  <button
+                    onClick={() => {
+                      setEditingCategory(prev => ({ ...prev, [item.id]: item.category || '' }));
+                    }}
+                    className={`px-2 py-0.5 text-xs rounded-md border transition-all ${
+                      item.category
+                        ? "bg-blue-500/10 text-blue-400 border-blue-500/20 hover:bg-blue-500/20"
+                        : "bg-zinc-800/30 text-zinc-500 border-zinc-700/30 hover:bg-zinc-700/40 hover:text-zinc-400"
+                    }`}
+                    title="Click to edit category"
+                  >
+                    {item.category || "+ Category"}
+                  </button>
+                )}
+              </div>
+            ) : item.category ? (
+              <span className="px-2 py-0.5 text-xs rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20">
                 {item.category}
               </span>
-            )}
+            ) : null}
           </div>
 
           {/* Purchase information display */}

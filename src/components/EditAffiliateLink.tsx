@@ -47,20 +47,28 @@ export default function EditAffiliateLink({ item, onUpdate }: EditAffiliateLinkP
     try {
       const urlObj = new URL(url);
       
-      // For Amazon links, check if it's a product page
+      // For Amazon links, check if it's a product page or valid affiliate link
       if (urlObj.hostname.includes('amazon.com') || urlObj.hostname.includes('amzn.to')) {
-        // Check if it's a browse/category page (these are bad)
-        if (urlObj.pathname === '/b' || urlObj.pathname.startsWith('/b?')) {
-          return false;
+        // Allow short links (amzn.to) - they're valid affiliate links
+        if (urlObj.hostname.includes('amzn.to')) {
+          return true;
         }
         
-        // Check if it has a product identifier
+        // Check if it's a browse/category page (these are bad unless it's an affiliate link with tag)
+        if (urlObj.pathname === '/b' || urlObj.pathname.startsWith('/b?')) {
+          // Allow if it has an affiliate tag
+          return urlObj.searchParams.has('tag');
+        }
+        
+        // Check if it has a product identifier OR is already an affiliate link
         const hasProductId = urlObj.pathname.includes('/dp/') || 
                             urlObj.pathname.includes('/gp/product/') ||
                             urlObj.pathname.includes('/product/') ||
                             urlObj.searchParams.has('asin');
         
-        return hasProductId;
+        const hasAffiliateTag = urlObj.searchParams.has('tag');
+        
+        return hasProductId || hasAffiliateTag;
       }
       
       return true; // Non-Amazon URLs are assumed valid
@@ -107,22 +115,40 @@ export default function EditAffiliateLink({ item, onUpdate }: EditAffiliateLinkP
     }
   };
 
-  const convertToAffiliate = () => {
+  const convertToAffiliate = async () => {
     // Helper to convert Amazon URL to affiliate format
     if (isAmazonLink) {
       try {
-        // Start with the original product URL
-        let url: URL;
+        let urlToUse = item.url;
         
-        // Handle amzn.to short links - we need to expand them first
+        // Handle amzn.to short links - expand them via our API
         if (item.url.includes('amzn.to/')) {
-          // For short links, we'll need to construct from the original URL
-          // But we can't expand them client-side, so we'll use the original URL if available
-          alert("Please use the full Amazon product URL (amazon.com/dp/...) instead of a short link (amzn.to/...).");
-          return;
+          try {
+            // Try to expand the short link
+            const expandResponse = await fetch(`/api/scrape?url=${encodeURIComponent(item.url)}`);
+            if (expandResponse.ok) {
+              const data = await expandResponse.json();
+              if (data.url && data.url !== item.url) {
+                urlToUse = data.url;
+              }
+            }
+          } catch (e) {
+            console.warn('Could not expand short link:', e);
+          }
         }
         
-        url = new URL(item.url);
+        let url: URL;
+        try {
+          url = new URL(urlToUse);
+        } catch {
+          // If URL parsing fails, try to extract from affiliate URL if provided
+          if (affiliateUrl && (affiliateUrl.includes('amazon.com') || affiliateUrl.includes('amzn.to'))) {
+            url = new URL(affiliateUrl);
+          } else {
+            alert("Please paste a valid Amazon URL (amazon.com/... or amzn.to/...).");
+            return;
+          }
+        }
         
         // Preserve the product path - don't let it become a browse/category page
         // Amazon product URLs typically have /dp/ or /gp/product/ in them
@@ -130,9 +156,13 @@ export default function EditAffiliateLink({ item, onUpdate }: EditAffiliateLinkP
                             url.pathname.includes('/gp/product/') ||
                             url.pathname.includes('/product/');
         
-        if (!isProductUrl) {
-          alert("Warning: This doesn't appear to be a product URL. Please use a direct product link (e.g., amazon.com/dp/B00...).");
-          return;
+        if (!isProductUrl && !url.pathname.includes('/b')) {
+          // Allow if it's already an affiliate link with proper parameters
+          const hasTag = url.searchParams.has('tag');
+          if (!hasTag) {
+            alert("Warning: This doesn't appear to be a product URL. Please use a direct product link (e.g., amazon.com/dp/B00...).");
+            return;
+          }
         }
         
         // Remove existing affiliate parameters to avoid conflicts
@@ -157,7 +187,7 @@ export default function EditAffiliateLink({ item, onUpdate }: EditAffiliateLinkP
         }
       } catch (error) {
         console.error("Error converting to affiliate link:", error);
-        alert("Error: Invalid URL format. Please use a full Amazon product URL.");
+        alert("Error: Invalid URL format. Please use a valid Amazon URL.");
       }
     } else {
       // For non-Amazon links, just let them paste the affiliate URL
@@ -218,7 +248,7 @@ export default function EditAffiliateLink({ item, onUpdate }: EditAffiliateLinkP
               className="w-full px-3 py-2 rounded bg-zinc-900 border border-zinc-700 text-white placeholder-zinc-500"
             />
             <p className="text-xs text-zinc-500 mt-1">
-              Leave empty to remove affiliate link
+              Paste any Amazon link (amzn.to short links work too). Leave empty to remove.
             </p>
           </div>
 

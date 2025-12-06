@@ -275,6 +275,7 @@ export async function updateWishlistItem(
     size?: string;
     quantity?: number;
     affiliateUrl?: string;
+    displayOrder?: number;
   }
 ) {
   const now = new Date();
