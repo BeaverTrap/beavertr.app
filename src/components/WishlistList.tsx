@@ -107,9 +107,14 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
   
   // Search, filter, and sort state
   const [searchQuery, setSearchQuery] = useState("");
+  const [showSearch, setShowSearch] = useState(true);
   const [sortBy, setSortBy] = useState<"date" | "price" | "priority" | "name" | "order">("date");
   const [filterStatus, setFilterStatus] = useState<"all" | "available" | "claimed" | "purchased">("all");
   const [filterCategory, setFilterCategory] = useState<string>("all");
+  const [filterStore, setFilterStore] = useState<string>("all");
+  const [filterPrime, setFilterPrime] = useState<boolean | null>(null);
+  const [priceMin, setPriceMin] = useState<string>("");
+  const [priceMax, setPriceMax] = useState<string>("");
   const [showFilters, setShowFilters] = useState(false);
   
   // Bulk operations
@@ -315,6 +320,48 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
         return false;
       }
       
+      // Store filter
+      if (filterStore !== "all") {
+        const itemStore = getStoreName(item.url);
+        if (itemStore !== filterStore) {
+          return false;
+        }
+      }
+      
+      // Prime filter (for Amazon items)
+      if (filterPrime !== null) {
+        const isAmazon = item.url.includes("amazon.com") || item.url.includes("amzn.to");
+        if (filterPrime) {
+          // Only show Amazon items, and check if description mentions Prime
+          if (!isAmazon) return false;
+          const hasPrime = item.description?.toLowerCase().includes("prime") || 
+                          item.title?.toLowerCase().includes("prime") ||
+                          item.notes?.toLowerCase().includes("prime");
+          if (!hasPrime) return false;
+        } else {
+          // Show non-Prime items (either non-Amazon or Amazon without Prime)
+          if (isAmazon) {
+            const hasPrime = item.description?.toLowerCase().includes("prime") || 
+                            item.title?.toLowerCase().includes("prime") ||
+                            item.notes?.toLowerCase().includes("prime");
+            if (hasPrime) return false;
+          }
+        }
+      }
+      
+      // Price range filter
+      if (priceMin || priceMax) {
+        const itemPrice = parseFloat(item.price?.replace(/[^0-9.]/g, "") || "0");
+        if (priceMin) {
+          const min = parseFloat(priceMin);
+          if (!isNaN(min) && itemPrice < min) return false;
+        }
+        if (priceMax) {
+          const max = parseFloat(priceMax);
+          if (!isNaN(max) && itemPrice > max) return false;
+        }
+      }
+      
       return true;
     })
     .sort((a, b) => {
@@ -342,24 +389,34 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
       {/* Search, Filter, and Sort Controls */}
       <div className="mb-6 space-y-3">
         {/* Search Bar */}
-        <div className="flex gap-3">
-          <div className="flex-1 relative">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search items..."
-              className="w-full px-4 py-2 rounded-xl bg-zinc-800/80 border border-zinc-700/50 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white"
-              >
-                ✕
-              </button>
-            )}
-          </div>
+        <div className="flex gap-3 items-center">
+          <button
+            onClick={() => setShowSearch(!showSearch)}
+            className="px-3 py-2 rounded-xl bg-zinc-800/80 border border-zinc-700/50 text-white hover:bg-zinc-700/80 transition-colors flex items-center gap-2"
+            title={showSearch ? "Hide search" : "Show search"}
+          >
+            <span>{showSearch ? "🔍" : "🔍"}</span>
+            <span className="hidden sm:inline">{showSearch ? "Hide" : "Show"} Search</span>
+          </button>
+          {showSearch && (
+            <div className="flex-1 relative">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search items..."
+                className="w-full px-4 py-2 rounded-xl bg-zinc-800/80 border border-zinc-700/50 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          )}
           {isOwner && (
             <button
               onClick={() => {
@@ -470,48 +527,136 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
 
         {/* Filter and Sort Options */}
         {showFilters && (
-          <div className="flex flex-wrap gap-3 p-4 rounded-xl bg-zinc-800/30 border border-zinc-700/50">
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-zinc-300">Sort by:</label>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="px-3 py-1 rounded bg-zinc-900 border border-zinc-700 text-white text-sm"
-              >
-                <option value="date">Date Added</option>
-                <option value="price">Price</option>
-                <option value="priority">Priority</option>
-                <option value="name">Name</option>
-              </select>
+          <div className="p-4 rounded-xl bg-zinc-800/30 border border-zinc-700/50 space-y-4">
+            <div className="flex flex-wrap gap-3 items-center">
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-zinc-300">Sort by:</label>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as any)}
+                  className="px-3 py-1 rounded bg-zinc-900 border border-zinc-700 text-white text-sm"
+                >
+                  <option value="date">Date Added</option>
+                  <option value="price">Price</option>
+                  <option value="priority">Priority</option>
+                  <option value="name">Name</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-zinc-300">Status:</label>
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value as any)}
+                  className="px-3 py-1 rounded bg-zinc-900 border border-zinc-700 text-white text-sm"
+                >
+                  <option value="all">All Items</option>
+                  <option value="available">Available</option>
+                  <option value="claimed">Claimed</option>
+                  <option value="purchased">Purchased</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-zinc-300">Category:</label>
+                <select
+                  value={filterCategory}
+                  onChange={(e) => setFilterCategory(e.target.value)}
+                  className="px-3 py-1 rounded bg-zinc-900 border border-zinc-700 text-white text-sm"
+                >
+                  <option value="all">All Categories</option>
+                  {Array.from(new Set(items.map(i => i.category).filter(Boolean) as string[])).map(cat => (
+                    <option key={cat} value={String(cat)}>{cat}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-zinc-300">Store:</label>
+                <select
+                  value={filterStore}
+                  onChange={(e) => setFilterStore(e.target.value)}
+                  className="px-3 py-1 rounded bg-zinc-900 border border-zinc-700 text-white text-sm"
+                >
+                  <option value="all">All Stores</option>
+                  {Array.from(new Set(items.map(i => getStoreName(i.url)))).sort().map(store => (
+                    <option key={store} value={store}>{store}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-zinc-300">Prime:</label>
+                <select
+                  value={filterPrime === null ? "all" : filterPrime ? "prime" : "non-prime"}
+                  onChange={(e) => {
+                    if (e.target.value === "all") setFilterPrime(null);
+                    else if (e.target.value === "prime") setFilterPrime(true);
+                    else setFilterPrime(false);
+                  }}
+                  className="px-3 py-1 rounded bg-zinc-900 border border-zinc-700 text-white text-sm"
+                >
+                  <option value="all">All Items</option>
+                  <option value="prime">Prime Only</option>
+                  <option value="non-prime">Non-Prime</option>
+                </select>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-zinc-300">Status:</label>
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value as any)}
-                className="px-3 py-1 rounded bg-zinc-900 border border-zinc-700 text-white text-sm"
-              >
-                <option value="all">All Items</option>
-                <option value="available">Available</option>
-                <option value="claimed">Claimed</option>
-                <option value="purchased">Purchased</option>
-              </select>
+            
+            {/* Price Range */}
+            <div className="flex flex-wrap gap-3 items-center">
+              <label className="text-sm text-zinc-300">Price Range:</label>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-zinc-400">$</span>
+                <input
+                  type="number"
+                  value={priceMin}
+                  onChange={(e) => setPriceMin(e.target.value)}
+                  placeholder="Min"
+                  min="0"
+                  step="0.01"
+                  className="w-24 px-2 py-1 rounded bg-zinc-900 border border-zinc-700 text-white text-sm"
+                />
+              </div>
+              <span className="text-zinc-500">to</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-zinc-400">$</span>
+                <input
+                  type="number"
+                  value={priceMax}
+                  onChange={(e) => setPriceMax(e.target.value)}
+                  placeholder="Max"
+                  min="0"
+                  step="0.01"
+                  className="w-24 px-2 py-1 rounded bg-zinc-900 border border-zinc-700 text-white text-sm"
+                />
+              </div>
+              {(priceMin || priceMax) && (
+                <button
+                  onClick={() => {
+                    setPriceMin("");
+                    setPriceMax("");
+                  }}
+                  className="px-2 py-1 text-xs rounded bg-zinc-700 hover:bg-zinc-600 text-white"
+                >
+                  Clear
+                </button>
+              )}
             </div>
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-zinc-300">Category:</label>
-              <select
-                value={filterCategory}
-                onChange={(e) => setFilterCategory(e.target.value)}
-                className="px-3 py-1 rounded bg-zinc-900 border border-zinc-700 text-white text-sm"
+            
+            <div className="flex items-center justify-between pt-2 border-t border-zinc-700/50">
+              <div className="text-sm text-zinc-400">
+                Showing {filteredAndSortedItems.length} of {items.length} items
+              </div>
+              <button
+                onClick={() => {
+                  setFilterStatus("all");
+                  setFilterCategory("all");
+                  setFilterStore("all");
+                  setFilterPrime(null);
+                  setPriceMin("");
+                  setPriceMax("");
+                }}
+                className="px-3 py-1 text-xs rounded bg-zinc-700 hover:bg-zinc-600 text-white"
               >
-                <option value="all">All Categories</option>
-                {Array.from(new Set(items.map(i => i.category).filter(Boolean) as string[])).map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
-            </div>
-            <div className="text-sm text-zinc-400 ml-auto">
-              Showing {filteredAndSortedItems.length} of {items.length} items
+                Clear All Filters
+              </button>
             </div>
           </div>
         )}
