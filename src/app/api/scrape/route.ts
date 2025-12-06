@@ -1,20 +1,38 @@
 import { NextResponse } from "next/server";
 import * as cheerio from "cheerio";
 
-// Lazy load puppeteer only for Amazon
+// Lazy load puppeteer only for Amazon (optional - may not work on Vercel)
 let puppeteer: any = null;
 async function getPuppeteer() {
-  if (!puppeteer) {
-    puppeteer = await import("puppeteer");
+  try {
+    if (!puppeteer) {
+      puppeteer = await import("puppeteer");
+    }
+    return puppeteer;
+  } catch (error) {
+    console.warn("Puppeteer not available:", error);
+    return null;
   }
-  return puppeteer;
 }
 
 async function scrapeAmazonWithPuppeteer(url: string) {
   const puppeteerModule = await getPuppeteer();
+  if (!puppeteerModule) {
+    throw new Error("Puppeteer not available");
+  }
+  
   const browser = await puppeteerModule.launch({
     headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-accelerated-2d-canvas',
+      '--no-first-run',
+      '--no-zygote',
+      '--single-process', // Required for serverless
+      '--disable-gpu'
+    ],
   });
   
   try {
@@ -185,10 +203,10 @@ export async function scrapeProductData(url: string) {
                       url.includes("fangamer.com") ||
                       (url.includes("collections/") && url.includes("/products/"));
     
-    // For Amazon, use Puppeteer to handle JavaScript-rendered content
+    // For Amazon, try Puppeteer first (if available), then fall back to cheerio
     if (isAmazon) {
       try {
-        console.log("Using Puppeteer for Amazon URL:", url);
+        console.log("Attempting Puppeteer for Amazon URL:", url);
         const amazonData = await scrapeAmazonWithPuppeteer(url);
         
         // If we got data from Puppeteer, return it
@@ -211,12 +229,9 @@ export async function scrapeProductData(url: string) {
           console.warn("Puppeteer returned empty data, falling back to cheerio");
         }
       } catch (puppeteerError: any) {
-        console.error("Puppeteer scraping failed, falling back to cheerio:", puppeteerError.message);
-        console.error("Puppeteer error details:", {
-          message: puppeteerError.message,
-          stack: puppeteerError.stack,
-        });
-        // Fall through to cheerio scraping
+        // Puppeteer often fails on Vercel/serverless - this is expected
+        console.warn("Puppeteer not available or failed, using cheerio fallback:", puppeteerError.message);
+        // Fall through to cheerio scraping - this is the normal path on Vercel
       }
     }
     
