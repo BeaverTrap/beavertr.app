@@ -298,7 +298,16 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
   }
 
   // Filter and sort items
-  const filteredAndSortedItems = items
+  // First, sort by displayOrder if sortBy is "order", otherwise use the selected sort
+  const sortedItems = sortBy === "order" 
+    ? [...items].sort((a, b) => {
+        const orderA = a.displayOrder ?? 999999;
+        const orderB = b.displayOrder ?? 999999;
+        return orderA - orderB;
+      })
+    : items;
+    
+  const filteredAndSortedItems = sortedItems
     .filter((item) => {
       // Search filter
       if (searchQuery) {
@@ -784,7 +793,10 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
               e.preventDefault();
               e.stopPropagation();
               e.dataTransfer.dropEffect = 'move';
-              (e.currentTarget as HTMLElement).classList.add('ring-2', 'ring-blue-500/50');
+              const target = e.currentTarget as HTMLElement;
+              if (!target.classList.contains('drag-over')) {
+                target.classList.add('drag-over', 'ring-2', 'ring-blue-500/50', 'bg-blue-500/5');
+              }
             }
           }}
           onDragLeave={(e) => {
@@ -796,17 +808,18 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
             const target = e.currentTarget as HTMLElement;
             target.classList.remove('drag-over', 'ring-2', 'ring-blue-500/50', 'bg-blue-500/5');
             
+            console.log('Drop event triggered', { isOwner, bulkMode, draggedItem, targetItem: item.id });
+            
             if (!isOwner || bulkMode || !draggedItem || draggedItem === item.id) {
+              console.log('Drop cancelled:', { isOwner, bulkMode, draggedItem, sameItem: draggedItem === item.id });
               setDraggedItem(null);
               return;
             }
             
-            // Get all items in the wishlist - use filteredAndSortedItems to maintain current view order
-            // But we need to work with all items for displayOrder
+            // Get all items in the wishlist sorted by current displayOrder
             const allItems = [...items].sort((a, b) => {
-              // Sort by displayOrder if available, otherwise by createdAt
-              const orderA = a.displayOrder ?? 0;
-              const orderB = b.displayOrder ?? 0;
+              const orderA = a.displayOrder ?? 999999;
+              const orderB = b.displayOrder ?? 999999;
               if (orderA !== orderB) return orderA - orderB;
               return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
             });
@@ -814,7 +827,10 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
             const draggedIndex = allItems.findIndex(i => i.id === draggedItem);
             const targetIndex = allItems.findIndex(i => i.id === item.id);
             
+            console.log('Reordering:', { draggedIndex, targetIndex, totalItems: allItems.length });
+            
             if (draggedIndex === -1 || targetIndex === -1) {
+              console.error('Could not find items:', { draggedIndex, targetIndex });
               setDraggedItem(null);
               return;
             }
@@ -830,27 +846,33 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
               itemsToUpdate.push({ id: item.id, displayOrder: index });
             });
             
+            console.log('Updating order for items:', itemsToUpdate);
+            
             // Save new order
             try {
-              await Promise.all(
+              const results = await Promise.all(
                 itemsToUpdate.map(({ id, displayOrder }) =>
                   fetch("/api/wishlist/items", {
                     method: "PATCH",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ id, displayOrder }),
-                  }).then(res => {
+                  }).then(async res => {
                     if (!res.ok) {
-                      throw new Error(`Failed to update item ${id}`);
+                      const errorText = await res.text();
+                      console.error(`Failed to update item ${id}:`, errorText);
+                      throw new Error(`Failed to update item ${id}: ${errorText}`);
                     }
                     return res.json();
                   })
                 )
               );
+              console.log('Order updated successfully:', results);
               setDraggedItem(null);
               // Force refresh
               await fetchItems();
             } catch (error) {
               console.error("Error reordering items:", error);
+              alert('Failed to reorder items. Check console for details.');
               setDraggedItem(null);
             }
           }}
