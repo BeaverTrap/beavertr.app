@@ -29,11 +29,19 @@ function getDb() {
     dbInstance = drizzle(client, { schema });
   } else {
     // Development: Use local SQLite file
-    // Only load better-sqlite3 in development
-    const Database = require('better-sqlite3');
-    const { drizzle } = require('drizzle-orm/better-sqlite3');
-    const sqlite = new Database('./dev.db');
-    dbInstance = drizzle(sqlite, { schema });
+    // Only load better-sqlite3 in development (not on Vercel)
+    if (process.env.VERCEL) {
+      throw new Error('SQLite file database not supported on Vercel. Please use Turso (libsql://) database URL.');
+    }
+    
+    try {
+      const Database = require('better-sqlite3');
+      const { drizzle } = require('drizzle-orm/better-sqlite3');
+      const sqlite = new Database('./dev.db');
+      dbInstance = drizzle(sqlite, { schema });
+    } catch (error: any) {
+      throw new Error(`Failed to load better-sqlite3. This is only available in development. Error: ${error.message}`);
+    }
   }
 
   return dbInstance;

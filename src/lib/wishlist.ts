@@ -205,11 +205,15 @@ export async function addWishlistItem(
       });
     } else {
       // Development: Use better-sqlite3 raw SQL
-      // Get the underlying database instance from Drizzle
-      const Database = require('better-sqlite3');
-      const sqlite = new Database('./dev.db');
+      // Only load better-sqlite3 in development (not on Vercel)
+      if (process.env.VERCEL) {
+        throw new Error('SQLite file database not supported on Vercel. Please use Turso (libsql://) database URL.');
+      }
       
       try {
+        const Database = require('better-sqlite3');
+        const sqlite = new Database('./dev.db');
+        
         const columns = ['id', 'title', 'url', 'wishlistId', 'userId', 'createdAt', 'updatedAt'];
         const values: any[] = [id, data.title, data.url, wishlistId, userId, timestamp, timestamp];
         
@@ -227,9 +231,8 @@ export async function addWishlistItem(
         
         const sqlQuery = `INSERT INTO wishlistItems (${columns.join(', ')}) VALUES (${columns.map(() => '?').join(', ')})`;
         sqlite.prepare(sqlQuery).run(...values);
-      } finally {
-        // Don't close - let the connection pool handle it
-        // sqlite.close();
+      } catch (error: any) {
+        throw new Error(`Failed to use better-sqlite3. This is only available in development. Error: ${error.message}`);
       }
     }
 
