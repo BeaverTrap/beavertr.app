@@ -396,18 +396,17 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
   return (
     <div>
       {/* Search, Filter, and Sort Controls */}
-      <div className="mb-6 space-y-3">
+      <div className="mb-4 space-y-2">
         {/* Search Bar */}
-        <div className="flex gap-3 items-center">
+        <div className="flex gap-2 items-center">
           <button
             onClick={() => setShowSearch(!showSearch)}
-            className="px-2 py-1.5 rounded-lg bg-zinc-800/50 border border-zinc-700/30 text-white hover:bg-zinc-700/50 transition-all flex items-center gap-1.5 text-sm"
+            className="p-1.5 rounded-lg bg-zinc-900/50 hover:bg-zinc-800/50 text-zinc-400 hover:text-white transition-all"
             title={showSearch ? "Hide search" : "Show search"}
           >
             <svg className={`w-4 h-4 transition-transform ${showSearch ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
-            <span className="hidden sm:inline">Search</span>
           </button>
           {showSearch && (
             <div className="flex-1 relative">
@@ -415,15 +414,17 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search items..."
-                className="w-full px-4 py-2 rounded-xl bg-zinc-800/80 border border-zinc-700/50 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                placeholder="Search..."
+                className="w-full px-3 py-1.5 text-sm rounded-lg bg-zinc-900/50 border border-zinc-800/50 text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery("")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white transition-colors"
                 >
-                  ✕
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </button>
               )}
             </div>
@@ -448,12 +449,11 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
           )}
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className="px-2 py-1.5 rounded-lg bg-zinc-800/50 border border-zinc-700/30 text-white hover:bg-zinc-700/50 transition-all flex items-center gap-1.5 text-sm"
+            className="p-1.5 rounded-lg bg-zinc-900/50 hover:bg-zinc-800/50 text-zinc-400 hover:text-white transition-all"
           >
             <svg className={`w-4 h-4 transition-transform ${showFilters ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
-            <span className="hidden sm:inline">Filters</span>
           </button>
         </div>
 
@@ -541,62 +541,63 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
 
         {/* Filter and Sort Options */}
         {showFilters && (
-          <div className="p-4 rounded-lg bg-zinc-800/20 border border-zinc-700/30 space-y-4 backdrop-blur-sm">
-            <div className="flex flex-wrap gap-3 items-center">
-              <div className="flex items-center gap-2">
-                <label className="text-xs text-zinc-400 font-medium">Sort:</label>
+          <div className="p-3 rounded-lg bg-zinc-900/30 border border-zinc-800/50 space-y-3">
+            <div className="flex flex-wrap gap-2 items-center">
+              <div className="flex items-center gap-1.5">
+                <label className="text-[10px] text-zinc-500 uppercase tracking-wide">Sort:</label>
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as any)}
-                  className="px-2.5 py-1.5 rounded-md bg-zinc-900/50 border border-zinc-700/30 text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/50 hover:border-zinc-600/50 transition-all"
+                  className="px-2 py-1 text-xs rounded-md bg-zinc-900/50 border border-zinc-800/50 text-white focus:outline-none focus:ring-1 focus:ring-blue-500/50 hover:border-zinc-700/50 transition-all"
                 >
-                  <option value="date">Date Added</option>
+                  <option value="date">Date</option>
                   <option value="price">Price</option>
                   <option value="priority">Priority</option>
                   <option value="name">Name</option>
+                  <option value="order">Custom Order</option>
                 </select>
               </div>
-              <div className="flex items-center gap-2">
-                <label className="text-xs text-zinc-400 font-medium">Status:</label>
+              <div className="flex items-center gap-1.5">
+                <label className="text-[10px] text-zinc-500 uppercase tracking-wide">Status:</label>
                 <select
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value as any)}
-                  className="px-2.5 py-1.5 rounded-md bg-zinc-900/50 border border-zinc-700/30 text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/50 hover:border-zinc-600/50 transition-all"
+                  className="px-2 py-1 text-xs rounded-md bg-zinc-900/50 border border-zinc-800/50 text-white focus:outline-none focus:ring-1 focus:ring-blue-500/50 hover:border-zinc-700/50 transition-all"
                 >
-                  <option value="all">All Items</option>
+                  <option value="all">All</option>
                   <option value="available">Available</option>
                   <option value="claimed">Claimed</option>
                   <option value="purchased">Purchased</option>
                 </select>
               </div>
-              <div className="flex items-center gap-2">
-                <label className="text-xs text-zinc-400 font-medium">Category:</label>
+              <div className="flex items-center gap-1.5">
+                <label className="text-[10px] text-zinc-500 uppercase tracking-wide">Category:</label>
                 <select
                   value={filterCategory}
                   onChange={(e) => setFilterCategory(e.target.value)}
-                  className="px-2.5 py-1.5 rounded-md bg-zinc-900/50 border border-zinc-700/30 text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/50 hover:border-zinc-600/50 transition-all"
+                  className="px-2 py-1 text-xs rounded-md bg-zinc-900/50 border border-zinc-800/50 text-white focus:outline-none focus:ring-1 focus:ring-blue-500/50 hover:border-zinc-700/50 transition-all"
                 >
-                  <option value="all">All Categories</option>
+                  <option value="all">All</option>
                   {Array.from(new Set(items.map(i => i.category).filter(Boolean) as string[])).map(cat => (
                     <option key={cat} value={String(cat)}>{cat}</option>
                   ))}
                 </select>
               </div>
-              <div className="flex items-center gap-2">
-                <label className="text-xs text-zinc-400 font-medium">Store:</label>
+              <div className="flex items-center gap-1.5">
+                <label className="text-[10px] text-zinc-500 uppercase tracking-wide">Store:</label>
                 <select
                   value={filterStore}
                   onChange={(e) => setFilterStore(e.target.value)}
-                  className="px-2.5 py-1.5 rounded-md bg-zinc-900/50 border border-zinc-700/30 text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/50 hover:border-zinc-600/50 transition-all"
+                  className="px-2 py-1 text-xs rounded-md bg-zinc-900/50 border border-zinc-800/50 text-white focus:outline-none focus:ring-1 focus:ring-blue-500/50 hover:border-zinc-700/50 transition-all"
                 >
-                  <option value="all">All Stores</option>
+                  <option value="all">All</option>
                   {Array.from(new Set(items.map(i => getStoreName(i.url)))).sort().map(store => (
                     <option key={store} value={store}>{store}</option>
                   ))}
                 </select>
               </div>
-              <div className="flex items-center gap-2">
-                <label className="text-xs text-zinc-400 font-medium">Prime:</label>
+              <div className="flex items-center gap-1.5">
+                <label className="text-[10px] text-zinc-500 uppercase tracking-wide">Prime:</label>
                 <select
                   value={filterPrime === null ? "all" : filterPrime ? "prime" : "non-prime"}
                   onChange={(e) => {
@@ -684,7 +685,15 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
             : "No items yet. Add some!"}
         </div>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div 
+          className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
+          onDragOver={(e) => {
+            if (isOwner && !bulkMode && draggedItem) {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = 'move';
+            }
+          }}
+        >
           {filteredAndSortedItems.map((item) => {
         // Determine the clickable URL (affiliate if valid, otherwise original)
         const getClickableUrl = () => {
@@ -729,15 +738,24 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
             setDraggedItem(item.id);
             e.dataTransfer.effectAllowed = 'move';
             e.dataTransfer.setData('text/plain', item.id);
+            (e.target as HTMLElement).style.opacity = '0.5';
           }}
           onDragOver={(e) => {
             if (isOwner && !bulkMode && draggedItem && draggedItem !== item.id) {
               e.preventDefault();
+              e.stopPropagation();
               e.dataTransfer.dropEffect = 'move';
+              (e.currentTarget as HTMLElement).classList.add('ring-2', 'ring-blue-500/50');
             }
+          }}
+          onDragLeave={(e) => {
+            (e.currentTarget as HTMLElement).classList.remove('ring-2', 'ring-blue-500/50');
           }}
           onDrop={async (e) => {
             e.preventDefault();
+            e.stopPropagation();
+            (e.currentTarget as HTMLElement).classList.remove('ring-2', 'ring-blue-500/50');
+            
             if (!isOwner || bulkMode || !draggedItem || draggedItem === item.id) return;
             
             // Get all items in the wishlist (not filtered/sorted)
@@ -777,29 +795,22 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
               setDraggedItem(null);
             }
           }}
-          onDragEnd={() => {
+          onDragEnd={(e) => {
+            (e.target as HTMLElement).style.opacity = '1';
             setDraggedItem(null);
           }}
-          className={`p-4 rounded-lg bg-zinc-800 border transition-all overflow-hidden ${
+          className={`group relative bg-zinc-900/40 backdrop-blur-sm rounded-xl border border-zinc-800/50 transition-all duration-200 ${
             item.isPurchased
-              ? "border-green-600/50 opacity-60"
+              ? "opacity-50 border-green-500/20"
               : item.isClaimed
-              ? "border-yellow-600/50"
+              ? "border-yellow-500/20"
               : selectedItems.has(item.id)
-              ? "border-blue-500 ring-2 ring-blue-500/50"
+              ? "border-blue-500/50 ring-1 ring-blue-500/30"
               : isDragging
-              ? "border-blue-400 opacity-50"
-              : "border-zinc-700/50 hover:border-zinc-600/70"
-          } ${isOwner && !bulkMode ? "cursor-move hover:shadow-lg" : ""}`}
+              ? "opacity-50 scale-95"
+              : "hover:border-zinc-700/70 hover:bg-zinc-900/60"
+          } ${isOwner && !bulkMode ? "cursor-grab active:cursor-grabbing" : ""}`}
         >
-          {/* Drag handle indicator */}
-          {isOwner && !bulkMode && (
-            <div className="absolute top-2 left-2 text-zinc-500 hover:text-zinc-400 transition-colors pointer-events-none">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
-              </svg>
-            </div>
-          )}
           {/* Bulk Selection Checkbox */}
           {isOwner && bulkMode && (
             <div className="mb-2">
@@ -825,7 +836,7 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
           )}
           {/* Image - Clickable with Edit Option */}
           {item.image && (
-            <div className="relative w-full h-48 mb-4 rounded-lg overflow-hidden bg-zinc-900 group">
+            <div className="relative w-full aspect-[4/3] mb-3 rounded-lg overflow-hidden bg-zinc-950/50 group/image">
               <a
                 href={clickableUrl}
                 target="_blank"
@@ -846,25 +857,25 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
                   onClick={() => {
                     setEditingImage({ itemId: item.id, image: item.image || '' });
                   }}
-                  className="absolute top-2 right-2 px-2 py-1.5 rounded-md bg-black/60 hover:bg-black/80 text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm flex items-center gap-1"
+                  className="absolute top-2 right-2 p-1.5 rounded-md bg-black/70 hover:bg-black/90 text-white opacity-0 group-hover/image:opacity-100 transition-all backdrop-blur-md"
                   title="Edit image"
                 >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                   </svg>
-                  Edit
                 </button>
               )}
             </div>
           )}
 
+          <div className="p-3 space-y-2">
           {/* Store Name */}
-          <div className="mb-2">
+          <div>
             <a
               href={clickableUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-block px-2 py-0.5 text-xs rounded-md bg-zinc-800/30 text-zinc-300 border border-zinc-700/30 hover:bg-zinc-700/40 hover:text-white transition-all"
+              className="inline-block px-2 py-0.5 text-[10px] uppercase tracking-wide rounded-full bg-zinc-800/50 text-zinc-400 hover:text-zinc-300 transition-colors"
               title={`View on ${getStoreName(item.url)}`}
             >
               {getStoreName(item.url)}
@@ -878,13 +889,13 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
             rel="noopener noreferrer"
             className="block"
           >
-            <h3 className="text-base font-semibold text-white mb-2 line-clamp-2 hover:text-blue-400 transition-colors cursor-pointer leading-tight">
+            <h3 className="text-sm font-medium text-white line-clamp-2 hover:text-blue-400 transition-colors leading-snug">
               {item.title}
             </h3>
           </a>
 
           {/* Price */}
-          <div className="text-lg font-bold text-green-400 mb-2">
+          <div className="text-base font-semibold text-green-400">
             {refreshing.has(item.id) ? (
               <span className="text-zinc-500 text-sm">Updating...</span>
             ) : item.price ? (
@@ -911,14 +922,14 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
           {item.description && (() => {
             const isExpanded = expandedDescriptions.has(item.id);
             const description = item.description;
-            const shouldTruncate = description.length > 150;
+            const shouldTruncate = description.length > 100;
             const displayText = isExpanded || !shouldTruncate 
               ? description 
-              : description.substring(0, 150) + '...';
+              : description.substring(0, 100) + '...';
             
             return (
-              <div className="mb-3">
-                <p className="text-sm text-zinc-400">
+              <div>
+                <p className="text-xs text-zinc-500 leading-relaxed">
                   {displayText}
                 </p>
                 {shouldTruncate && (
@@ -934,59 +945,46 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
                         return newSet;
                       });
                     }}
-                    className="text-xs text-blue-400 hover:text-blue-300 mt-1 transition-colors flex items-center gap-1"
+                    className="text-[10px] text-zinc-500 hover:text-zinc-400 mt-1 transition-colors"
                   >
-                    {isExpanded ? (
-                      <>
-                        <span>Show less</span>
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                        </svg>
-                      </>
-                    ) : (
-                      <>
-                        <span>Show more</span>
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </>
-                    )}
+                    {isExpanded ? "Show less" : "Show more"}
                   </button>
                 )}
               </div>
             );
           })()}
+          </div>
 
           {/* Status badges */}
-          <div className="flex gap-1.5 mb-3 flex-wrap items-center">
+          <div className="px-3 pb-3 flex gap-1.5 flex-wrap items-center">
             {item.isPurchased && (
-              <span className="px-2 py-0.5 text-xs rounded-md bg-green-500/10 text-green-400 border border-green-500/20">
-                ✓ Purchased
+              <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-green-500/10 text-green-400">
+                Purchased
               </span>
             )}
-            {item.claimStatus === 'purchased' && (
-              <span className="px-2 py-0.5 text-xs rounded-md bg-green-500/10 text-green-400 border border-green-500/20">
-                ✓ Purchased
+            {item.claimStatus === 'purchased' && !item.isPurchased && (
+              <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-green-500/10 text-green-400">
+                Purchased
               </span>
             )}
             {item.claimStatus === 'pending' && (
-              <span className="px-2 py-0.5 text-xs rounded-md bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
-                ⏳ Pending
+              <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-yellow-500/10 text-yellow-400">
+                Pending
               </span>
             )}
             {item.claimStatus === 'confirmed' && !item.isPurchased && (
-              <span className="px-2 py-0.5 text-xs rounded-md bg-green-500/10 text-green-400 border border-green-500/20">
-                ✓ Confirmed
+              <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-green-500/10 text-green-400">
+                Confirmed
               </span>
             )}
             {item.isClaimed && item.claimStatus !== 'pending' && item.claimStatus !== 'confirmed' && item.claimStatus !== 'purchased' && !item.isPurchased && (
-              <span className="px-2 py-0.5 text-xs rounded-md bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
+              <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-yellow-500/10 text-yellow-400">
                 Claimed
               </span>
             )}
             {item.priority === 1 && (
-              <span className="px-2 py-0.5 text-xs rounded-md bg-red-500/10 text-red-400 border border-red-500/20">
-                High Priority
+              <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-red-500/10 text-red-400">
+                High
               </span>
             )}
             {/* Category - editable for owners */}
@@ -1040,19 +1038,19 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
                     onClick={() => {
                       setEditingCategory(prev => ({ ...prev, [item.id]: item.category || '' }));
                     }}
-                    className={`px-2 py-0.5 text-xs rounded-md border transition-all ${
+                    className={`px-1.5 py-0.5 text-[10px] rounded-full transition-all ${
                       item.category
-                        ? "bg-blue-500/10 text-blue-400 border-blue-500/20 hover:bg-blue-500/20"
-                        : "bg-zinc-800/30 text-zinc-500 border-zinc-700/30 hover:bg-zinc-700/40 hover:text-zinc-400"
+                        ? "bg-blue-500/10 text-blue-400 hover:bg-blue-500/15"
+                        : "bg-zinc-800/30 text-zinc-500 hover:bg-zinc-700/40 hover:text-zinc-400"
                     }`}
                     title="Click to edit category"
                   >
-                    {item.category || "+ Category"}
+                    {item.category || "+"}
                   </button>
                 )}
               </div>
             ) : item.category ? (
-              <span className="px-2 py-0.5 text-xs rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20">
+              <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-blue-500/10 text-blue-400">
                 {item.category}
               </span>
             ) : null}
@@ -1303,7 +1301,7 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
           <ItemComments itemId={item.id} isOwner={isOwner} />
 
           {/* Actions */}
-          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-zinc-700">
+          <div className="px-3 pb-3 pt-2 flex flex-wrap items-center gap-1.5 border-t border-zinc-800/50">
             {(() => {
               // Validate affiliate URL - make sure it's a valid product page
               const isValidAffiliateUrl = item.affiliateUrl && (() => {
@@ -1339,24 +1337,21 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
                   href={purchaseUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm text-blue-400 hover:text-blue-300 transition-colors whitespace-nowrap flex items-center gap-1"
+                  className="text-xs text-blue-400 hover:text-blue-300 transition-colors whitespace-nowrap"
                   title={isValidAffiliateUrl ? "Using affiliate link" : "View product"}
                 >
-                  {isValidAffiliateUrl ? "Purchase" : "View"}
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
+                  {isValidAffiliateUrl ? "Purchase" : "View"} →
                 </a>
               );
             })()}
             
-            <div className="flex flex-wrap gap-1.5 flex-1 justify-end">
+            <div className="flex flex-wrap gap-1 flex-1 justify-end">
               {isOwner && (
                 <>
                   {item.isPurchased && (
                     <button
                       onClick={() => handleClaim(item.id, "unpurchase")}
-                      className="text-xs px-2 py-1 rounded-md bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border border-orange-500/20 hover:border-orange-500/30 transition-all whitespace-nowrap"
+                      className="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-500/10 hover:bg-orange-500/15 text-orange-400 transition-all"
                       title="Unmark as purchased"
                     >
                       Unmark
@@ -1368,7 +1363,7 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
                   )}
                   <button
                     onClick={() => handleRefresh(item)}
-                    className="text-xs px-2 py-1 rounded-md bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 hover:border-blue-500/30 transition-all whitespace-nowrap"
+                    className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-500/10 hover:bg-blue-500/15 text-blue-400 transition-all"
                     title="Refresh item data"
                   >
                     ↻
@@ -1381,25 +1376,25 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
                     <>
                       <button
                         onClick={() => setShowPurchaseModal(item.id)}
-                        className="text-xs px-2 py-1 rounded-md bg-green-500/10 hover:bg-green-500/20 text-green-400 border border-green-500/20 hover:border-green-500/30 transition-all whitespace-nowrap"
+                        className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-500/10 hover:bg-green-500/15 text-green-400 transition-all"
                       >
-                        ✓ Purchased
+                        ✓
                       </button>
                       <button
                         onClick={() => handleClaim(item.id, "unclaim")}
-                        className="text-xs px-2 py-1 rounded-md bg-zinc-700/50 hover:bg-zinc-600/50 text-zinc-300 border border-zinc-600/30 hover:border-zinc-500/50 transition-all whitespace-nowrap"
+                        className="text-[10px] px-1.5 py-0.5 rounded-full bg-zinc-800/50 hover:bg-zinc-700/50 text-zinc-400 transition-all"
                       >
                         Unclaim
                       </button>
                     </>
                   ) : item.isClaimed ? (
-                    <span className="text-xs px-2 py-1 rounded-md bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 whitespace-nowrap">
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400">
                       Claimed
                     </span>
                   ) : (
                     <button
                       onClick={() => handleClaim(item.id, "claim")}
-                      className="text-xs px-2 py-1 rounded-md bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 border border-yellow-500/20 hover:border-yellow-500/30 transition-all whitespace-nowrap"
+                      className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/10 hover:bg-yellow-500/15 text-yellow-400 transition-all"
                     >
                       Claim
                     </button>
@@ -1439,9 +1434,9 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
                         href={purchaseUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs px-2 py-1 rounded-md bg-green-500/10 hover:bg-green-500/20 text-green-400 border border-green-500/20 hover:border-green-500/30 transition-all whitespace-nowrap inline-block text-center"
+                        className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-500/10 hover:bg-green-500/15 text-green-400 transition-all whitespace-nowrap inline-block text-center"
                       >
-                        Purchase
+                        Buy
                       </a>
                     );
                   })()}
@@ -1450,9 +1445,9 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
               {isOwner && (
                 <button
                   onClick={() => handleDelete(item.id)}
-                  className="text-xs px-2 py-1 rounded-md bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 hover:border-red-500/30 transition-all whitespace-nowrap"
+                  className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500/10 hover:bg-red-500/15 text-red-400 transition-all"
                 >
-                  Delete
+                  ×
                 </button>
               )}
             </div>
