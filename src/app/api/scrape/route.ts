@@ -193,6 +193,11 @@ export async function scrapeProductData(url: string) {
         
         // If we got data from Puppeteer, return it
         if (amazonData.title || amazonData.price || amazonData.image) {
+          console.log("Successfully scraped Amazon with Puppeteer:", {
+            hasTitle: !!amazonData.title,
+            hasPrice: !!amazonData.price,
+            hasImage: !!amazonData.image,
+          });
           return {
             title: amazonData.title || "Amazon Product",
             image: amazonData.image || "",
@@ -202,9 +207,15 @@ export async function scrapeProductData(url: string) {
             hasSizeOptions: amazonData.hasSizeOptions || false,
             url,
           };
+        } else {
+          console.warn("Puppeteer returned empty data, falling back to cheerio");
         }
       } catch (puppeteerError: any) {
         console.error("Puppeteer scraping failed, falling back to cheerio:", puppeteerError.message);
+        console.error("Puppeteer error details:", {
+          message: puppeteerError.message,
+          stack: puppeteerError.stack,
+        });
         // Fall through to cheerio scraping
       }
     }
@@ -239,31 +250,110 @@ export async function scrapeProductData(url: string) {
     // Check if Amazon is blocking us (common patterns)
     if (isAmazon && (html.includes("Robot Check") || html.includes("captcha") || html.includes("Sorry! We couldn't find that page"))) {
       console.warn("Amazon may be blocking the scraper or page not found");
-      // Continue anyway, might still get some data
+      // Return minimal data rather than failing completely
+      return {
+        title: "Amazon Product",
+        image: "",
+        description: "Product from Amazon (scraping blocked)",
+        price: "",
+        url,
+      };
     }
     
     const $ = cheerio.load(html);
 
     // Extract metadata first (needed for fallbacks)
-    // Try multiple sources for title
-    let title =
-      $('meta[property="og:title"]').attr("content")?.trim() ||
-      $('meta[name="twitter:title"]').attr("content")?.trim() ||
-      $("title").text()?.trim() ||
-      $('h1').first().text()?.trim() ||
-      "";
+    // For Amazon, try more specific selectors
+    let title = "";
+    if (isAmazon) {
+      // Amazon-specific title selectors
+      title = 
+        $('#productTitle').text()?.trim() ||
+        $('h1.a-size-large').text()?.trim() ||
+        $('h1.a-size-base-plus').text()?.trim() ||
+        $('span#productTitle').text()?.trim() ||
+        $('h1').first().text()?.trim() ||
+        "";
+      
+      // Clean up Amazon title (remove extra whitespace, "Amazon.com" suffix)
+      if (title) {
+        title = title.replace(/\s+/g, ' ').trim();
+        title = title.replace(/\s*-\s*Amazon\.com.*$/i, '').trim();
+        title = title.replace(/\s*Amazon\.com.*$/i, '').trim();
+      }
+    }
+    
+    // Fallback to meta tags if Amazon-specific selectors didn't work
+    if (!title) {
+      title =
+        $('meta[property="og:title"]').attr("content")?.trim() ||
+        $('meta[name="twitter:title"]').attr("content")?.trim() ||
+        $("title").text()?.trim() ||
+        $('h1').first().text()?.trim() ||
+        "";
+      
+      // Clean up title from meta tags too
+      if (title && isAmazon) {
+        title = title.replace(/\s*-\s*Amazon\.com.*$/i, '').trim();
+        title = title.replace(/\s*Amazon\.com.*$/i, '').trim();
+      }
+    }
 
-    let image =
-      $('meta[property="og:image"]').attr("content") ||
-      $('meta[name="twitter:image"]').attr("content") ||
-      $('meta[property="og:image:url"]').attr("content") ||
-      "";
+    let image = "";
+    if (isAmazon) {
+      // Amazon-specific image selectors
+      image = 
+        $('#landingImage').attr('src') ||
+        $('#landingImage').attr('data-old-src') ||
+        $('#landingImage').attr('data-a-dynamic-image') ||
+        $('img[data-a-dynamic-image]').first().attr('data-a-dynamic-image') ||
+        $('img#landingImage').attr('src') ||
+        "";
+      
+      // Parse data-a-dynamic-image JSON if needed
+      if (!image) {
+        const dynamicImage = $('img[data-a-dynamic-image]').first().attr('data-a-dynamic-image');
+        if (dynamicImage) {
+          try {
+            const imageObj = JSON.parse(dynamicImage);
+            const imageKeys = Object.keys(imageObj);
+            if (imageKeys.length > 0) {
+              image = imageKeys[0];
+            }
+          } catch (e) {
+            // Ignore
+          }
+        }
+      }
+    }
+    
+    // Fallback to meta tags
+    if (!image) {
+      image =
+        $('meta[property="og:image"]').attr("content") ||
+        $('meta[name="twitter:image"]').attr("content") ||
+        $('meta[property="og:image:url"]').attr("content") ||
+        "";
+    }
 
-    let description =
-      $('meta[property="og:description"]').attr("content") ||
-      $('meta[name="twitter:description"]').attr("content") ||
-      $('meta[name="description"]').attr("content") ||
-      "";
+    let description = "";
+    if (isAmazon) {
+      // Amazon-specific description selectors
+      description =
+        $('#productDescription').text()?.trim() ||
+        $('#feature-bullets').text()?.trim() ||
+        $('.product-description').text()?.trim() ||
+        "";
+    }
+    
+    // Fallback to meta tags
+    if (!description) {
+      description =
+        $('meta[property="og:description"]').attr("content") ||
+        $('meta[name="twitter:description"]').attr("content") ||
+        $('meta[name="description"]').attr("content") ||
+        "";
+    }
 
     // Shopify-specific extraction (Fangamer, etc.)
     if (isShopify) {
@@ -923,7 +1013,57 @@ export async function scrapeProductData(url: string) {
       }
     }
 
-    // 3. Try common CSS selectors for price elements
+    // 3. Amazon-specific price extraction (if isAmazon)
+    if (!price && isAmazon) {
+      const amazonPriceSelectors = [
+        '#priceblock_dealprice .a-offscreen',
+        '#priceblock_ourprice .a-offscreen',
+        '#price .a-offscreen',
+        '.a-price .a-offscreen',
+        '[data-a-color="price"] .a-offscreen',
+        '.a-price-whole',
+        '#priceblock_saleprice .a-offscreen',
+        '#priceblock_dealprice',
+        '#priceblock_ourprice',
+        '.a-price-range .a-offscreen',
+        '[data-a-color="base"] .a-offscreen',
+      ];
+      
+      for (const selector of amazonPriceSelectors) {
+        const priceEl = $(selector).first();
+        if (priceEl.length) {
+          let priceText = priceEl.text().trim();
+          // For .a-offscreen, also check parent
+          if (!priceText && selector.includes('.a-offscreen')) {
+            priceText = priceEl.parent().text().trim();
+          }
+          if (priceText) {
+            const priceMatch = priceText.match(/[\d,]+\.?\d*/);
+            if (priceMatch) {
+              const priceValue = parseFloat(priceMatch[0].replace(/,/g, ''));
+              // Filter out per-count prices (usually very small)
+              if (priceValue >= 1) {
+                price = `$${priceMatch[0]}`;
+                break;
+              }
+            }
+          }
+        }
+      }
+      
+      // Try to find price in data attributes
+      if (!price) {
+        const priceData = $('[data-a-color="price"]').first().attr('data-a-color-price');
+        if (priceData) {
+          const priceMatch = priceData.match(/[\d,]+\.?\d*/);
+          if (priceMatch) {
+            price = `$${priceMatch[0]}`;
+          }
+        }
+      }
+    }
+
+    // 4. Try common CSS selectors for price elements (non-Amazon or fallback)
     if (!price) {
       const priceSelectors = [
         '[itemprop="price"]',
@@ -954,7 +1094,7 @@ export async function scrapeProductData(url: string) {
       }
     }
 
-    // 4. Try to find price in text (common patterns) - more comprehensive
+    // 5. Try to find price in text (common patterns) - more comprehensive
     if (!price) {
       const pricePatterns = [
         /\$\s*[\d,]+\.?\d{0,2}/,  // $123.45 or $1,234
