@@ -211,6 +211,10 @@ export async function addWishlistItem(
       }
       
       try {
+        // Only load better-sqlite3 if not on Vercel and not during build
+        if (process.env.VERCEL || process.env.NEXT_PHASE === 'phase-production-build') {
+          throw new Error('better-sqlite3 not available on Vercel');
+        }
         const Database = require('better-sqlite3');
         const sqlite = new Database('./dev.db');
         

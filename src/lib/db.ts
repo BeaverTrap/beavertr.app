@@ -22,7 +22,7 @@ function getDb() {
     }
     
     try {
-      // Dynamic import to avoid bundling issues
+      // Use require for synchronous loading (needed for drizzle)
       const { createClient } = require('@libsql/client');
       const { drizzle } = require('drizzle-orm/libsql');
       
@@ -37,13 +37,27 @@ function getDb() {
     }
   } else {
     // Development: Use local SQLite file
-    // Only load better-sqlite3 in development (not on Vercel)
-    if (process.env.VERCEL) {
+    // Only load better-sqlite3 in development (not on Vercel or during build)
+    if (process.env.VERCEL || process.env.NEXT_PHASE === 'phase-production-build') {
       throw new Error('SQLite file database not supported on Vercel. Please use Turso (libsql://) database URL.');
     }
     
+    // Check if better-sqlite3 is available before requiring it
+    // This prevents build failures if the module is not installed
     try {
-      const Database = require('better-sqlite3');
+      // Use a function to require it only when needed
+      const loadBetterSqlite3 = () => {
+        try {
+          return require('better-sqlite3');
+        } catch (e: any) {
+          if (e.code === 'MODULE_NOT_FOUND') {
+            throw new Error('better-sqlite3 is not installed. Install it for local development: npm install better-sqlite3');
+          }
+          throw e;
+        }
+      };
+      
+      const Database = loadBetterSqlite3();
       const { drizzle } = require('drizzle-orm/better-sqlite3');
       const sqlite = new Database('./dev.db');
       dbInstance = drizzle(sqlite, { schema });
@@ -75,4 +89,3 @@ const dbProxy = new Proxy({} as any, {
 });
 
 export { dbProxy as db };
-
