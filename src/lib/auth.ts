@@ -31,46 +31,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     async signIn({ user, account }) {
       try {
-        // Check if user is already signed in (account linking)
-        const session = await auth();
-        let dbUser;
-        
-        if (session?.user?.id) {
-          // User is already signed in - link account to existing user
-          const { db } = await import("@/lib/db");
-          const { users } = await import("@/lib/schema");
-          const { eq } = await import("drizzle-orm");
-          
-          const [existingUser] = await db
-            .select()
-            .from(users)
-            .where(eq(users.id, session.user.id))
-            .limit(1);
-          
-          if (existingUser) {
-            dbUser = existingUser;
-          } else if (session.user.email) {
-            // Fallback to email if ID doesn't match
-            const [userByEmail] = await db
-              .select()
-              .from(users)
-              .where(eq(users.email, session.user.email))
-              .limit(1);
-            if (userByEmail) {
-              dbUser = userByEmail;
-            }
-          }
-        }
-        
-        // If no existing user found, create/find by email
-        if (!dbUser) {
-          const email = user.email || `${user.id}@${account?.provider || 'unknown'}.local`;
-          dbUser = await getOrCreateUser(
-            email,
-            user.name || undefined,
-            user.image || undefined
-          );
-        }
+        // Create/find user by email
+        const email = user.email || `${user.id}@${account?.provider || 'unknown'}.local`;
+        const dbUser = await getOrCreateUser(
+          email,
+          user.name || undefined,
+          user.image || undefined
+        );
         
         // Save account with access token for API access
         if (account && dbUser) {
@@ -84,8 +51,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             .from(accounts)
             .where(
               and(
-                eq(accounts.provider, account.provider),
-                eq(accounts.providerAccountId, account.providerAccountId)
+                eq(accounts.provider, String(account.provider)),
+                eq(accounts.providerAccountId, String(account.providerAccountId))
               )
             )
             .limit(1);
@@ -111,11 +78,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               .update(accounts)
               .set({
                 userId: dbUser.id,
-                refreshToken: account.refresh_token || existingAccount.refreshToken,
-                accessToken: account.access_token || existingAccount.accessToken,
+                refreshToken: account.refresh_token ? String(account.refresh_token) : existingAccount.refreshToken,
+                accessToken: account.access_token ? String(account.access_token) : existingAccount.accessToken,
                 expiresAt: account.expires_at ? new Date(account.expires_at * 1000).getTime() : existingAccount.expiresAt,
-                tokenType: account.token_type || existingAccount.tokenType,
-                scope: account.scope || existingAccount.scope,
+                tokenType: account.token_type ? String(account.token_type) : existingAccount.tokenType,
+                scope: account.scope ? (Array.isArray(account.scope) ? account.scope.join(' ') : String(account.scope)) : existingAccount.scope,
               })
               .where(eq(accounts.id, existingAccount.id));
           }
