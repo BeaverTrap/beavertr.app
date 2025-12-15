@@ -43,3 +43,7 @@ next-env.d.ts
 /data
 /dev.db
 /drizzle
+
+# old_site - reference only, contains large files
+old_site/
+old_site/**
