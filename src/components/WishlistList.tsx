@@ -33,6 +33,7 @@ interface WishlistItem {
   proofVerifiedAt?: string | null;
   proofVerifiedBy?: string | null;
   isAnonymous?: boolean;
+  userId?: string;
   createdAt: string;
 }
 
@@ -64,7 +65,6 @@ function getStoreName(url: string): string {
         'bestbuy.com': 'Best Buy',
         'etsy.com': 'Etsy',
         'ebay.com': 'eBay',
-        'etsy.com': 'Etsy',
         'shopify.com': 'Shopify Store',
         'bigcommerce.com': 'BigCommerce Store',
       };
@@ -631,7 +631,7 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
               
               return (
                 <a
-                  href={purchaseUrl}
+                  href={purchaseUrl || undefined}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-sm text-blue-400 hover:text-blue-300 whitespace-nowrap"
@@ -728,7 +728,7 @@ export default function WishlistList({ wishlistId, isOwner = false }: WishlistLi
                     
                     return (
                       <a
-                        href={purchaseUrl}
+                        href={purchaseUrl || undefined}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-xs px-2 py-1 rounded bg-green-600/20 hover:bg-green-600/30 text-green-400 whitespace-nowrap inline-block text-center"

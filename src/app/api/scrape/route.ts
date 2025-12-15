@@ -644,8 +644,6 @@ export async function scrapeProductData(url: string) {
     if (!price) {
       const metaPrice = 
         $('meta[property="product:price:amount"]').attr("content") ||
-        $('meta[property="product:price:currency"]').attr("content") ? 
-          $('meta[property="product:price:amount"]').attr("content") : null ||
         $('meta[name="price"]').attr("content") ||
         $('meta[itemprop="price"]').attr("content") ||
         "";

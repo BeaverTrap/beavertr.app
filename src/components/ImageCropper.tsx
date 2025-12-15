@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import Cropper from "react-easy-crop";
-import type { Area } from "react-easy-crop/types";
+import type { Area } from "react-easy-crop";
 
 interface ImageCropperProps {
   image: string;
@@ -134,11 +134,11 @@ export default function ImageCropper({ image, originalFile, onCropComplete, onCa
       }
       
       // Set background color if global color table exists
-      if (gif.globalColorTable && gif.globalColorTable.length >= 3) {
-        const bgIndex = gif.bgColorIndex || 0;
+      if ((gif as any).globalColorTable && (gif as any).globalColorTable.length >= 3) {
+        const bgIndex = (gif as any).bgColorIndex || 0;
         const colorIndex = bgIndex * 3;
-        if (colorIndex + 2 < gif.globalColorTable.length) {
-          compositeCtx.fillStyle = `rgb(${gif.globalColorTable[colorIndex]}, ${gif.globalColorTable[colorIndex + 1]}, ${gif.globalColorTable[colorIndex + 2]})`;
+        if (colorIndex + 2 < (gif as any).globalColorTable.length) {
+          compositeCtx.fillStyle = `rgb(${(gif as any).globalColorTable[colorIndex]}, ${(gif as any).globalColorTable[colorIndex + 1]}, ${(gif as any).globalColorTable[colorIndex + 2]})`;
           compositeCtx.fillRect(0, 0, compositeCanvas.width, compositeCanvas.height);
         }
       }

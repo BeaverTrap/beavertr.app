@@ -43,7 +43,7 @@ export default function WishlistDashboard() {
         setWishlists(data);
         // Only set default if no active wishlist is selected
         if (data.length > 0 && !activeWishlistId) {
-          const defaultWishlist = data.find((w: Wishlist) => w.isDefault === true || w.isDefault === 1) || data[0];
+          const defaultWishlist = data.find((w: Wishlist) => w.isDefault === true || w.isDefault === (1 as any)) || data[0];
           setActiveWishlistId(defaultWishlist.id);
         }
       }

@@ -1,9 +1,10 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import Twitch from "next-auth/providers/twitch";
+import type { Provider } from "next-auth/providers";
 import { getOrCreateUser } from "@/lib/user";
 
-const providers = [
+const providers: Provider[] = [
   Google({
     clientId: process.env.GOOGLE_CLIENT_ID!,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
@@ -93,16 +94,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             await db.insert(accounts).values({
               id: randomUUID(),
               userId: dbUser.id,
-              type: account.type,
-              provider: account.provider,
-              providerAccountId: account.providerAccountId,
-              refreshToken: account.refresh_token || null,
-              accessToken: account.access_token || null,
+              type: String(account.type),
+              provider: String(account.provider),
+              providerAccountId: String(account.providerAccountId),
+              refreshToken: account.refresh_token ? String(account.refresh_token) : null,
+              accessToken: account.access_token ? String(account.access_token) : null,
               expiresAt: account.expires_at ? new Date(account.expires_at * 1000).getTime() : null,
-              tokenType: account.token_type || null,
-              scope: account.scope || null,
-              idToken: account.id_token || null,
-              sessionState: account.session_state || null,
+              tokenType: account.token_type ? String(account.token_type) : null,
+              scope: account.scope ? (Array.isArray(account.scope) ? account.scope.join(' ') : String(account.scope)) : null,
+              idToken: account.id_token ? String(account.id_token) : null,
+              sessionState: account.session_state ? String(account.session_state) : null,
             });
           } else {
             // Update existing account with new tokens

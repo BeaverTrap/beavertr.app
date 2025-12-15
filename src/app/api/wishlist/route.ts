@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { getWishlistItems, addWishlistItem, deleteWishlistItem, updateWishlistItem } from "@/lib/wishlist";
+import { getWishlistItems, addWishlistItem, deleteWishlistItem, updateWishlistItem, getDefaultWishlist } from "@/lib/wishlist";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -9,7 +9,8 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const items = await getWishlistItems(session.user.id);
+  const defaultWishlist = await getDefaultWishlist(session.user.id);
+  const items = await getWishlistItems(defaultWishlist.id);
   return NextResponse.json(items);
 }
 
@@ -29,7 +30,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const item = await addWishlistItem(session.user.id, {
+  const defaultWishlist = await getDefaultWishlist(session.user.id);
+  const item = await addWishlistItem(defaultWishlist.id, session.user.id, {
     title: title || "Untitled",
     url,
     image,
