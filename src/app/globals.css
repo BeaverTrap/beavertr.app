@@ -1,4 +1,442 @@
+/* Montserrat for ShadowDark Entries (imported via Google Fonts) - must be before all other rules */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap');
 @import "tailwindcss";
+
+/* ====================== */
+/*  FONTS                 */
+/* ====================== */
+
+/* Press Start 2P for DOS-style Cassette Theme */
+@font-face {
+  font-family: 'Press Start 2P';
+  src: url('/fonts/Press_Start_2P/PressStart2P-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+/* VT323 for DOS-style Cassette Theme (alternative) */
+@font-face {
+  font-family: 'VT323';
+  src: url('/fonts/VT323/VT323-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+/* Cinzel for Homebrew Theme */
+@font-face {
+  font-family: 'Cinzel';
+  src: url('/fonts/Cinzel/Cinzel-VariableFont_wght.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+/* JSL Blackletter for ShadowDark Header */
+@font-face {
+  font-family: 'JSL Blackletter';
+  src: url('/fonts/JBLACK.TTF') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+/* Old Newspaper for ShadowDark Category Labels */
+@font-face {
+  font-family: 'Old Newspaper';
+  src: url('/fonts/OldNewspaperTypes.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+/* ====================== */
+/*  SHADOWDARK FONT CLASSES */
+/* ====================== */
+.shadowdark-header {
+  font-family: "JSL Blackletter", serif !important;
+}
+
+.shadowdark-category {
+  font-family: "Old Newspaper", serif !important;
+}
+
+.shadowdark-entry {
+  font-family: "Montserrat", sans-serif !important;
+}
+
+/* ====================== */
+/*  THEME FONT OVERRIDES  */
+/* ====================== */
+
+/* Cassette Theme: Use Press Start 2P or VT323 - uniform font size */
+html[data-theme="cassette"] body {
+  font-family: 'Press Start 2P', 'VT323', monospace !important;
+}
+
+/* Homebrew Theme: Use Cinzel - uniform font size */
+html[data-theme="homebrew"] body {
+  font-family: 'Cinzel', serif !important;
+}
+
+/* ====================== */
+/*  CASSETTE THEME FIXES  */
+/* ====================== */
+
+/* Buttons in Cassette theme: black bg, green text, green border, hover flip */
+html[data-theme="cassette"] .btn.btn-primary {
+  background-color: #000 !important;
+  color: #39FF14 !important;
+  border: 2px solid #39FF14 !important;
+  border-radius: 1rem !important;
+}
+
+html[data-theme="cassette"] .btn.btn-primary:hover {
+  background-color: #39FF14 !important;
+  color: #000 !important;
+}
+
+/* Make input fields black with green text/borders in Cassette theme */
+html[data-theme="cassette"] input {
+  background-color: #000 !important;
+  color: #39FF14 !important;
+  border: 2px solid #39FF14 !important;
+  border-radius: 0.5rem !important;
+}
+
+/* Force all .border-neon-cyan to be neon green in Cassette theme */
+html[data-theme="cassette"] .border-neon-cyan {
+  border-color: #39FF14 !important;
+}
+
+/* Make the modal close "X" neon green in Cassette theme */
+html[data-theme="cassette"] .modal-close-btn {
+  color: #39FF14 !important;
+}
+
+/* Cassette checkboxes: neon green */
+html[data-theme="cassette"] input[type="checkbox"] {
+  accent-color: #39FF14;
+}
+
+/* Homebrew checkboxes: maroon/red */
+html[data-theme="homebrew"] input[type="checkbox"] {
+  accent-color: #800000;
+}
+
+/* ====================== */
+/*  THEME BACKGROUND OVERRIDES */
+/* ====================== */
+
+/* Light Theme: Ensure proper contrast - force all text to be dark */
+html[data-theme="light"] .text-base-content {
+  color: #000000 !important;
+}
+
+html[data-theme="light"] .text-base-content\/70,
+html[data-theme="light"] [class*="text-base-content/70"] {
+  color: #1a1a1a !important;
+}
+
+html[data-theme="light"] .text-base-content\/50,
+html[data-theme="light"] [class*="text-base-content/50"] {
+  color: #4a4a4a !important;
+}
+
+html[data-theme="light"] .text-base-content\/80,
+html[data-theme="light"] [class*="text-base-content/80"] {
+  color: #0a0a0a !important;
+}
+
+/* Force all text elements in light theme to be dark */
+html[data-theme="light"] p,
+html[data-theme="light"] span,
+html[data-theme="light"] div,
+html[data-theme="light"] h1,
+html[data-theme="light"] h2,
+html[data-theme="light"] h3,
+html[data-theme="light"] h4,
+html[data-theme="light"] h5,
+html[data-theme="light"] h6 {
+  color: #000000 !important;
+}
+
+html[data-theme="light"] .bg-base-200 {
+  background-color: #f3f4f6 !important;
+}
+
+html[data-theme="light"] .bg-base-300 {
+  background-color: #e5e7eb !important;
+}
+
+/* Dark Theme: Force black background */
+html[data-theme="dark"] body {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="dark"] .bg-base-100 {
+  background-color: #000000 !important;
+}
+
+html[data-theme="dark"] nav {
+  background-color: #000000 !important;
+}
+
+/* Cassette Theme: Force black background and neon green text */
+html[data-theme="cassette"] {
+  color-scheme: dark;
+}
+
+html[data-theme="cassette"] body {
+  background-color: #000000 !important;
+  color: #39FF14 !important;
+}
+
+/* Reduce font size for cassette theme navigation links */
+html[data-theme="cassette"] .cassette-nav-link {
+  font-size: 2.25rem !important;
+  transition: font-size 0s !important;
+}
+
+@media (min-width: 768px) {
+  html[data-theme="cassette"] .cassette-nav-link {
+    font-size: 3rem !important;
+  }
+}
+
+html[data-theme="cassette"] .bg-base-100 {
+  background-color: #000000 !important;
+}
+
+html[data-theme="cassette"] .text-base-content {
+  color: #39FF14 !important;
+}
+
+html[data-theme="cassette"] .border-base-300 {
+  border-color: #0FF !important;
+}
+
+/* Homebrew Theme: Force parchment background and maroon text */
+html[data-theme="homebrew"] {
+  color-scheme: light;
+}
+
+html[data-theme="homebrew"] body {
+  background-color: #f5f5dc !important;
+  color: #3a2a1a !important;
+}
+
+html[data-theme="homebrew"] .bg-base-100 {
+  background-color: #f5f5dc !important;
+}
+
+html[data-theme="homebrew"] .text-base-content {
+  color: #2a1a0a !important;
+}
+
+html[data-theme="homebrew"] .text-base-content\/70 {
+  color: #3a2a1a !important;
+}
+
+html[data-theme="homebrew"] .text-base-content\/50 {
+  color: #4a3a2a !important;
+}
+
+html[data-theme="homebrew"] .border-base-300 {
+  border-color: #8B7355 !important;
+}
+
+html[data-theme="homebrew"] .bg-base-200 {
+  background-color: #f0ead8 !important;
+}
+
+html[data-theme="homebrew"] .bg-base-300 {
+  background-color: #e5dcc5 !important;
+}
+
+/* Force all text to be dark in homebrew theme */
+html[data-theme="homebrew"] p,
+html[data-theme="homebrew"] h1,
+html[data-theme="homebrew"] h2,
+html[data-theme="homebrew"] h3,
+html[data-theme="homebrew"] h4,
+html[data-theme="homebrew"] h5,
+html[data-theme="homebrew"] h6,
+html[data-theme="homebrew"] span,
+html[data-theme="homebrew"] div,
+html[data-theme="homebrew"] a,
+html[data-theme="homebrew"] button,
+html[data-theme="homebrew"] label {
+  color: #2a1a0a !important;
+}
+
+/* Ensure backgrounds are light enough */
+html[data-theme="homebrew"] .bg-base-100 {
+  background-color: #f5f5dc !important;
+}
+
+html[data-theme="homebrew"] .bg-base-200 {
+  background-color: #f0ead8 !important;
+}
+
+html[data-theme="homebrew"] .bg-base-300 {
+  background-color: #e5dcc5 !important;
+}
+
+html[data-theme="homebrew"] .text-base-content {
+  color: #5a3e2b !important;
+}
+
+html[data-theme="homebrew"] .text-base-content\/70 {
+  color: #6b4f3f !important;
+}
+
+html[data-theme="homebrew"] .text-base-content\/50 {
+  color: #7a5f4f !important;
+}
+
+/* Navbar theme overrides */
+html[data-theme="cassette"] nav {
+  background-color: #000000 !important;
+  border-color: #0FF !important;
+}
+
+html[data-theme="cassette"] nav a,
+html[data-theme="cassette"] nav button {
+  color: #39FF14 !important;
+}
+
+html[data-theme="homebrew"] nav {
+  background-color: #f5f5dc !important;
+  border-color: #8B7355 !important;
+}
+
+html[data-theme="homebrew"] nav a,
+html[data-theme="homebrew"] nav button {
+  color: #3a2a1a !important;
+}
+
+html[data-theme="homebrew"] nav a:hover,
+html[data-theme="homebrew"] nav button:hover {
+  color: #8B4513 !important;
+}
+
+/* Dropdown menu theme overrides */
+html[data-theme="cassette"] .bg-base-100 {
+  background-color: #000000 !important;
+}
+
+html[data-theme="cassette"] .text-base-content {
+  color: #39FF14 !important;
+}
+
+html[data-theme="homebrew"] .bg-base-100 {
+  background-color: #f5f5dc !important;
+}
+
+html[data-theme="homebrew"] .text-base-content {
+  color: #3a2a1a !important;
+}
+
+/* Ensure dropdown menu is solid and on top - use class selector */
+.navbar-dropdown {
+  background-color: var(--fallback-b1, oklch(var(--b1))) !important;
+  opacity: 1 !important;
+  backdrop-filter: none !important;
+  z-index: 99999999 !important;
+  position: absolute !important;
+  isolation: isolate !important;
+  overflow: visible !important;
+  width: auto !important;
+  min-width: 200px !important;
+}
+
+/* Force nav to be on top */
+nav {
+  z-index: 99999 !important;
+}
+
+nav > div {
+  overflow: visible !important;
+}
+
+nav > div > div {
+  overflow: visible !important;
+}
+
+nav > div > div > div:last-child {
+  overflow: visible !important;
+  z-index: 999999 !important;
+}
+
+/* Theme-specific background colors for dropdown */
+html[data-theme="light"] .navbar-dropdown {
+  background-color: #ffffff !important;
+}
+
+html[data-theme="dark"] .navbar-dropdown {
+  background-color: #000000 !important;
+}
+
+html[data-theme="dark"] nav {
+  background-color: #000000 !important;
+}
+
+html[data-theme="dark"] body {
+  background-color: #000000 !important;
+}
+
+html[data-theme="cassette"] .navbar-dropdown {
+  background-color: #000000 !important;
+}
+
+html[data-theme="homebrew"] .navbar-dropdown {
+  background-color: #f5f5dc !important;
+}
+
+/* Force navbar to be on top of EVERYTHING */
+nav {
+  z-index: 999999 !important;
+  position: sticky !important;
+}
+
+nav > div {
+  z-index: 999999 !important;
+  overflow: visible !important;
+}
+
+nav > div > div {
+  z-index: 999999 !important;
+  overflow: visible !important;
+}
+
+nav > div > div > div:last-child {
+  z-index: 9999999 !important;
+  overflow: visible !important;
+}
+
+nav > div > div > div:last-child > div {
+  z-index: 99999999 !important;
+  overflow: visible !important;
+}
+
+.navbar-dropdown {
+  overflow: visible !important;
+  max-width: none !important;
+  white-space: nowrap !important;
+}
+
+/* Ensure no parent containers clip the dropdown */
+nav,
+nav > div {
+  overflow: visible !important;
+}
+
+/* Allow dropdown to overflow its immediate parent */
+nav > div > div > div:last-child {
+  overflow: visible !important;
+}
+
+/* ====================== */
+/*  BASE STYLES           */
+/* ====================== */
 
 :root {
   --background: #ffffff;
@@ -11,29 +449,14 @@
   --font-sans: var(--font-inter);
 }
 
-/* Dark theme (default) */
-:root.dark,
-:root {
-  --background: #0a0a0a;
-  --foreground: #ededed;
-}
-
-/* Light theme */
-:root.light {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @media (prefers-color-scheme: dark) {
-  :root:not(.light) {
+  :root {
     --background: #0a0a0a;
     --foreground: #ededed;
   }
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
   font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 

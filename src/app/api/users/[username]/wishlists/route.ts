@@ -70,7 +70,7 @@ export async function GET(
     .where(eq(wishlists.userId, user.id));
 
   // Filter based on privacy and viewer permissions
-  const filteredWishlists = allWishlists.filter((wishlist: any) => {
+  const filteredWishlists = allWishlists.filter(wishlist => {
     if (isOwner) {
       // Owner can see all wishlists (public, private, personal)
       return true;

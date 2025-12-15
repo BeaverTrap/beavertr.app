@@ -2,29 +2,16 @@
 
 import { useState, useCallback } from "react";
 import Cropper from "react-easy-crop";
-import type { Area } from "react-easy-crop";
+import type { Area } from "react-easy-crop/types";
 
 interface ImageCropperProps {
   image: string;
   originalFile?: File;
   onCropComplete: (croppedImage: string, mimeType: string) => void;
   onCancel: () => void;
-  uploading?: boolean;
-  aspect?: number; // Aspect ratio (undefined = free)
-  cropShape?: 'rect' | 'round'; // Crop shape
-  title?: string; // Modal title
 }
 
-export default function ImageCropper({ 
-  image, 
-  originalFile, 
-  onCropComplete, 
-  onCancel, 
-  uploading = false,
-  aspect,
-  cropShape = 'rect',
-  title = 'Crop Image'
-}: ImageCropperProps) {
+export default function ImageCropper({ image, originalFile, onCropComplete, onCancel }: ImageCropperProps) {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
@@ -62,50 +49,11 @@ export default function ImageCropper({
   );
 
   const createImage = (url: string): Promise<HTMLImageElement> =>
-    new Promise(async (resolve, reject) => {
-      try {
-        let imageUrl = url;
-        
-        // If it's an external URL (not data URL), proxy it through our API to avoid CORS issues
-        if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-          try {
-            // Use our proxy endpoint to fetch the image
-            const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(imageUrl)}`;
-            const response = await fetch(proxyUrl);
-            if (!response.ok) throw new Error('Failed to fetch image via proxy');
-            const blob = await response.blob();
-            const dataUrl = await new Promise<string>((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onloadend = () => resolve(reader.result as string);
-              reader.onerror = reject;
-              reader.readAsDataURL(blob);
-            });
-            imageUrl = dataUrl;
-          } catch (fetchError) {
-            console.warn('Failed to proxy image, trying direct load with crossOrigin:', fetchError);
-            // Fallback: try direct load with crossOrigin
-            const image = new Image();
-            image.crossOrigin = 'anonymous';
-            image.addEventListener("load", () => resolve(image));
-            image.addEventListener("error", (error) => {
-              console.error('Image load error:', error);
-              reject(new Error('Failed to load image. This may be due to CORS restrictions. Please try uploading the image directly.'));
-            });
-            image.src = url;
-            return;
-          }
-        }
-        
-        const image = new Image();
-        image.addEventListener("load", () => resolve(image));
-        image.addEventListener("error", (error) => {
-          console.error('Image load error:', error);
-          reject(new Error('Failed to load image. Please try again.'));
-        });
-        image.src = imageUrl;
-      } catch (error: any) {
-        reject(error);
-      }
+    new Promise((resolve, reject) => {
+      const image = new Image();
+      image.addEventListener("load", () => resolve(image));
+      image.addEventListener("error", (error) => reject(error));
+      image.src = url;
     });
 
   const getCroppedGif = async (
@@ -128,7 +76,7 @@ export default function ImageCropper({
       } else {
         // Import the library - it will set window.GIF
         console.log('Loading GIF.js from node_modules...');
-        gifModule = await import('gif.js') as any;
+        gifModule = await import('gif.js');
         // gif.js exports as a UMD module, try different ways to access it
         GIF = (gifModule as any).default || (window as any).GIF || gifModule;
         if (!GIF && typeof window !== 'undefined') {
@@ -186,11 +134,11 @@ export default function ImageCropper({
       }
       
       // Set background color if global color table exists
-      if ((gif as any).globalColorTable && (gif as any).globalColorTable.length >= 3) {
-        const bgIndex = (gif as any).bgColorIndex || 0;
+      if (gif.globalColorTable && gif.globalColorTable.length >= 3) {
+        const bgIndex = gif.bgColorIndex || 0;
         const colorIndex = bgIndex * 3;
-        if (colorIndex + 2 < (gif as any).globalColorTable.length) {
-          compositeCtx.fillStyle = `rgb(${(gif as any).globalColorTable[colorIndex]}, ${(gif as any).globalColorTable[colorIndex + 1]}, ${(gif as any).globalColorTable[colorIndex + 2]})`;
+        if (colorIndex + 2 < gif.globalColorTable.length) {
+          compositeCtx.fillStyle = `rgb(${gif.globalColorTable[colorIndex]}, ${gif.globalColorTable[colorIndex + 1]}, ${gif.globalColorTable[colorIndex + 2]})`;
           compositeCtx.fillRect(0, 0, compositeCanvas.width, compositeCanvas.height);
         }
       }
@@ -393,23 +341,17 @@ export default function ImageCropper({
         try {
           console.log('Attempting animated GIF processing...');
           result = await getCroppedGif(originalFile, croppedAreaPixels);
-          console.log('Animated GIF processing successful');
         } catch (gifError: any) {
           console.warn('Animated GIF processing failed, falling back to static crop:', gifError);
           // Fallback to static crop if animated processing fails
-          // Don't use alert here as it blocks execution - just log and continue
-          console.log('Falling back to static crop...');
+          alert('Could not preserve animation. Cropping as static GIF instead.');
           result = await getCroppedImg(image, croppedAreaPixels, mimeType);
-          console.log('Static crop successful');
         }
       } else {
         // Regular image processing
-        console.log('Processing regular image...');
         result = await getCroppedImg(image, croppedAreaPixels, mimeType);
-        console.log('Image processing successful');
       }
       
-      console.log('Calling onCropComplete with URL:', result.url.substring(0, 50) + '...');
       onCropComplete(result.url, result.mimeType);
     } catch (error: any) {
       console.error("Error cropping image:", error);
@@ -422,7 +364,7 @@ export default function ImageCropper({
     <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
       <div className="bg-zinc-900 rounded-lg border border-zinc-700 w-full max-w-2xl">
         <div className="p-4 border-b border-zinc-700">
-          <h2 className="text-xl font-semibold text-white">{title}</h2>
+          <h2 className="text-xl font-semibold text-white">Crop Profile Picture</h2>
           <p className="text-sm text-zinc-400 mt-1">Drag to reposition, use slider to zoom</p>
           {isGif && !processingGif && (
             <p className="text-sm text-green-400 mt-2">
@@ -434,11 +376,6 @@ export default function ImageCropper({
               ⏳ Processing animated GIF frames... This may take a moment.
             </p>
           )}
-          {uploading && (
-            <p className="text-sm text-green-400 mt-2">
-              ⬆️ Uploading image... Please wait.
-            </p>
-          )}
         </div>
         
         <div className="relative w-full h-96 bg-zinc-800">
@@ -446,11 +383,11 @@ export default function ImageCropper({
             image={image}
             crop={crop}
             zoom={zoom}
-            aspect={aspect === undefined ? undefined : aspect}
+            aspect={1}
             onCropChange={onCropChange}
             onZoomChange={onZoomChange}
             onCropComplete={onCropCompleteCallback}
-            cropShape={cropShape}
+            cropShape="round"
             showGrid={false}
           />
         </div>
@@ -474,17 +411,17 @@ export default function ImageCropper({
           <div className="flex gap-4">
             <button
               onClick={onCancel}
-              disabled={processingGif || uploading}
+              disabled={processingGif}
               className="flex-1 px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancel
             </button>
             <button
               onClick={handleSave}
-              disabled={processingGif || uploading}
+              disabled={processingGif}
               className="flex-1 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {uploading ? "Uploading..." : processingGif ? "Processing GIF..." : isGif ? "Crop (Preserves Animation)" : "Save Cropped Image"}
+              {processingGif ? "Processing GIF..." : isGif ? "Crop (Preserves Animation)" : "Save Cropped Image"}
             </button>
           </div>
         </div>

@@ -9,28 +9,26 @@
     "lint": "eslint",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:push": "drizzle-kit push",
-    "db:add-itemtype": "node scripts/add-itemtype-column.js",
-    "db:add-category": "node scripts/add-category-column.js",
-    "db:add-displayorder": "node scripts/add-displayorder-column.js"
+    "db:push": "drizzle-kit push"
   },
   "dependencies": {
     "@libsql/client": "^0.15.15",
-    "@vercel/blob": "^2.0.0",
+    "better-sqlite3": "^12.4.6",
     "cheerio": "^1.1.2",
+    "daisyui": "^5.5.14",
+    "drizzle-kit": "^0.31.7",
     "drizzle-orm": "^0.44.7",
     "framer-motion": "^12.23.24",
     "gif.js": "^0.2.0",
     "gifuct-js": "^2.1.2",
-    "next": "16.0.7",
+    "next": "16.0.3",
     "next-auth": "^5.0.0-beta.30",
+    "next-themes": "^0.4.6",
+    "puppeteer": "^24.31.0",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-easy-crop": "^5.5.6",
     "react-icons": "^5.5.0"
-  },
-  "optionalDependencies": {
-    "better-sqlite3": "^12.4.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -39,9 +37,8 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "drizzle-kit": "^0.31.7",
     "eslint": "^9",
-    "eslint-config-next": "16.0.7",
+    "eslint-config-next": "16.0.3",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

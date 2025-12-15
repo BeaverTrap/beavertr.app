@@ -65,7 +65,7 @@ export async function GET(
     if (!user) {
       console.error("API: User not found for identifier:", decodedUsername);
       // Debug: try to see what users exist
-      const allUsers = await (db as any).select({ id: users.id, username: users.username, email: users.email }).from(users).limit(5);
+      const allUsers = await db.select({ id: users.id, username: users.username, email: users.email }).from(users).limit(5);
       console.error("API: Available users:", allUsers);
       console.error("API: Tried to find:", { original: username, decoded: decodedUsername });
       
@@ -74,7 +74,7 @@ export async function GET(
         error: "User not found", 
         identifier: decodedUsername,
         message: `No user found with identifier: ${decodedUsername}`,
-        availableUsers: allUsers.map((u: any) => ({ id: u.id, username: u.username, email: u.email }))
+        availableUsers: allUsers.map(u => ({ id: u.id, username: u.username, email: u.email }))
       }, { status: 404 });
     }
 

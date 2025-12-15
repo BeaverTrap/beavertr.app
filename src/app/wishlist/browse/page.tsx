@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
+import Navbar from "@/components/Navbar";
 import AuthButton from "@/components/AuthButton";
 
 interface User {
@@ -40,76 +41,40 @@ export default function BrowsePage() {
 
   if (status === "loading" || loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-black to-zinc-900 text-white flex items-center justify-center">
-        <div className="text-zinc-400">Loading...</div>
+      <div className="min-h-screen bg-base-100 flex items-center justify-center">
+        <Navbar />
+        <div className="text-base-content/70">Loading...</div>
       </div>
     );
   }
 
   if (!session) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-black to-zinc-900 text-white">
-        <nav className="border-b border-zinc-800/50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
-              <Link
-                href="/"
-                className="text-xl font-bold bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent"
-              >
-                beavertr.app
-              </Link>
-            </div>
-          </div>
-        </nav>
+      <div className="min-h-screen bg-base-100">
+        <Navbar />
         <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
-          <p className="text-zinc-400">Please sign in to browse wishlists</p>
+          <p className="text-base-content/70">Please sign in to browse wishlists</p>
         </main>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-black to-zinc-900 text-white">
-      <nav className="border-b border-zinc-800/50 backdrop-blur-sm bg-zinc-900/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link
-              href="/"
-              className="text-xl font-bold bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent"
-            >
-              beavertr.app
-            </Link>
-            <div className="flex items-center gap-6">
-              <Link
-                href="/wishlist"
-                className="text-sm text-zinc-400 hover:text-white transition-colors"
-              >
-                My Wishlists
-              </Link>
-              <Link
-                href="/wishlist/friends"
-                className="text-sm text-zinc-400 hover:text-white transition-colors"
-              >
-                Friends
-              </Link>
-              <AuthButton />
-            </div>
-          </div>
-        </div>
-      </nav>
+    <div className="min-h-screen bg-base-100">
+      <Navbar />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-4xl font-bold mb-8">Browse Wishlists</h1>
+        <h1 className="text-4xl font-bold mb-8 text-base-content">Browse Wishlists</h1>
 
         {users.length === 0 ? (
-          <p className="text-zinc-400">No public wishlists available</p>
+          <p className="text-base-content/70">No public wishlists available</p>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {users.map((user) => (
               <Link
                 key={user.id}
                 href={`/wishlist/user/${user.username || user.id}`}
-                className="p-6 rounded-xl bg-zinc-800/50 border border-zinc-700/50 hover:bg-zinc-800 transition-colors"
+                className="p-6 rounded-xl bg-base-200 border border-base-300 hover:bg-base-300 transition-colors"
               >
                 <div className="flex items-center gap-4">
                   {user.image && (
@@ -120,9 +85,9 @@ export default function BrowsePage() {
                     />
                   )}
                   <div>
-                    <h3 className="font-semibold">{user.name || user.email}</h3>
+                    <h3 className="font-semibold text-base-content">{user.name || user.email}</h3>
                     {user.username && (
-                      <p className="text-sm text-zinc-400">@{user.username}</p>
+                      <p className="text-sm text-base-content/70">@{user.username}</p>
                     )}
                   </div>
                 </div>

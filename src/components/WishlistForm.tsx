@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import CustomItemForm from "./CustomItemForm";
 
 interface WishlistFormProps {
   wishlistId: string;
@@ -13,8 +12,6 @@ export default function WishlistForm({ wishlistId, onItemAdded }: WishlistFormPr
   const [link, setLink] = useState("");
   const [loading, setLoading] = useState(false);
   const [userAffiliateTag, setUserAffiliateTag] = useState<string | null>(null);
-  const [size, setSize] = useState<string>("");
-  const [showCustomForm, setShowCustomForm] = useState(false);
   const { data: session } = useSession();
 
   // Fetch user's affiliate tag on mount
@@ -112,15 +109,10 @@ export default function WishlistForm({ wishlistId, onItemAdded }: WishlistFormPr
         body: JSON.stringify({ url: finalUrl }),
       });
 
-      let scrapedData: any = {};
+      let scrapedData = {};
       if (scrapeResponse.ok) {
         scrapedData = await scrapeResponse.json();
         console.log("Scraped data received:", scrapedData);
-        
-        // Auto-fill size if scraped data has it
-        if (scrapedData.size) {
-          setSize(scrapedData.size);
-        }
       } else {
         const errorData = await scrapeResponse.json().catch(() => ({}));
         console.error("Scrape failed:", errorData);
@@ -129,26 +121,7 @@ export default function WishlistForm({ wishlistId, onItemAdded }: WishlistFormPr
         return;
       }
       
-      // Check for duplicates before adding
-      const checkDuplicateResponse = await fetch(`/api/wishlist/items?wishlistId=${wishlistId}`);
-      if (checkDuplicateResponse.ok) {
-        const existingItems = await checkDuplicateResponse.json();
-        const normalizedUrl = finalUrl.split('?')[0].split('#')[0].toLowerCase().trim();
-        const duplicate = existingItems.find((item: any) => {
-          const existingUrl = (item.url || '').split('?')[0].split('#')[0].toLowerCase().trim();
-          return existingUrl === normalizedUrl;
-        });
-        
-        if (duplicate) {
-          if (!confirm(`This item already exists in your wishlist:\n"${duplicate.title}"\n\nAdd it anyway?`)) {
-            setLoading(false);
-            return;
-          }
-        }
-      }
-
       // Add to wishlist with scraped data and affiliate URL if applicable
-      // Only include expected fields from scrapedData (exclude url, hasSizeOptions, etc.)
       const response = await fetch("/api/wishlist/items", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -156,43 +129,24 @@ export default function WishlistForm({ wishlistId, onItemAdded }: WishlistFormPr
           wishlistId,
           url: finalUrl,
           affiliateUrl: affiliateUrl,
-          title: scrapedData.title || undefined,
-          image: scrapedData.image || undefined,
-          price: scrapedData.price || undefined,
-          description: scrapedData.description || undefined,
-          // Use scraped size if available, otherwise use manual input
-          size: scrapedData.size || (size.trim() || null),
+          ...scrapedData,
         }),
       });
 
       if (response.ok) {
-        const data = await response.json();
-        console.log("Item added successfully:", data);
         setLink("");
-        setSize("");
         if (onItemAdded) {
           onItemAdded();
         } else {
           window.location.reload();
         }
       } else {
-        const errorText = await response.text();
-        console.error("Failed to add item:", {
-          status: response.status,
-          statusText: response.statusText,
-          errorText,
-        });
-        let error;
-        try {
-          error = JSON.parse(errorText);
-        } catch {
-          error = { error: errorText || "Failed to add item" };
-        }
-        alert(error.error || `Failed to add item (${response.status})`);
+        const error = await response.json();
+        alert(error.error || "Failed to add item");
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error adding item:", error);
-      alert(`Error adding item: ${error.message || "Unknown error"}`);
+      alert("Error adding item");
     } finally {
       setLoading(false);
     }
@@ -200,38 +154,17 @@ export default function WishlistForm({ wishlistId, onItemAdded }: WishlistFormPr
 
   if (!session) {
     return (
-      <div className="mb-8 p-6 rounded-2xl bg-gradient-to-br from-zinc-800/50 to-zinc-900/50 border border-zinc-700/50 backdrop-blur-sm">
-        <p className="text-zinc-300 text-center">Sign in to add items to your wishlist</p>
+      <div className="mb-8 p-6 rounded-2xl bg-base-200 border border-base-300">
+        <p className="text-base-content text-center">Sign in to add items to your wishlist</p>
       </div>
     );
   }
 
   return (
     <div className="mb-8">
-      {showCustomForm && (
-        <CustomItemForm
-          wishlistId={wishlistId}
-          onItemAdded={onItemAdded}
-          onClose={() => setShowCustomForm(false)}
-        />
-      )}
-      
-      <div className="flex gap-3 mb-4">
-        <button
-          type="button"
-          onClick={() => setShowCustomForm(true)}
-          className="px-4 py-2 rounded-xl bg-zinc-700/80 hover:bg-zinc-600/80 text-white transition-colors"
-        >
-          + Add Custom Item
-        </button>
-        <div className="flex-1 border-t border-zinc-700/50 my-auto"></div>
-        <span className="text-sm text-zinc-400 my-auto">or</span>
-        <div className="flex-1 border-t border-zinc-700/50 my-auto"></div>
-      </div>
-
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="relative group">
-          <label className="block text-sm font-medium text-zinc-300 mb-2">
+          <label className="block text-sm font-medium text-base-content mb-2">
             Add Product Link
           </label>
           <div className="flex gap-3">
@@ -241,14 +174,14 @@ export default function WishlistForm({ wishlistId, onItemAdded }: WishlistFormPr
                 value={link}
                 onChange={(e) => setLink(e.target.value)}
                 placeholder="Paste product URL here..."
-                className="w-full px-4 py-3 pr-32 rounded-xl bg-zinc-800/80 border border-zinc-700/50 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all backdrop-blur-sm"
+                className="w-full px-4 py-3 pr-32 rounded-xl bg-base-100 border border-base-300 text-base-content placeholder-base-content/50 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
                 disabled={loading}
               />
               <button
                 type="button"
                 onClick={handlePasteFromClipboard}
                 disabled={loading}
-                className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-700/80 hover:bg-zinc-600/80 text-zinc-200 border border-zinc-600/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 text-xs font-medium rounded-lg bg-base-300 hover:bg-base-content hover:text-base-100 text-base-content border border-base-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Paste from clipboard"
               >
                 📋 Paste
@@ -270,23 +203,6 @@ export default function WishlistForm({ wishlistId, onItemAdded }: WishlistFormPr
             </button>
           </div>
         </div>
-
-        {/* Size Field - Only show if size was auto-detected or user wants to add */}
-        {size && (
-          <div>
-            <label className="block text-sm font-medium text-zinc-300 mb-2">
-              Size (auto-detected)
-            </label>
-            <input
-              type="text"
-              value={size}
-              onChange={(e) => setSize(e.target.value)}
-              placeholder="e.g., Large, XL, 10, 42"
-              className="w-full px-4 py-2 rounded-xl bg-zinc-800/80 border border-zinc-700/50 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
-              disabled={loading}
-            />
-          </div>
-        )}
       </form>
     </div>
   );

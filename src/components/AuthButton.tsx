@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { signIn, signOut } from "next-auth/react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import ThemeToggle from "./ThemeToggle";
 
 export default function AuthButton() {
   const { data: session, status } = useSession();
@@ -60,7 +59,6 @@ export default function AuthButton() {
 
     return (
       <div className="flex items-center gap-4">
-        <ThemeToggle />
         {profileUrl ? (
           <Link
             href={profileUrl}
@@ -82,15 +80,12 @@ export default function AuthButton() {
   }
 
   return (
-    <div className="flex items-center gap-4">
-      <ThemeToggle />
-      <button
-        onClick={() => signIn("google", { callbackUrl: "/" })}
-        className="px-4 py-2 text-white/70 hover:text-white text-sm transition-colors"
-      >
-        Sign in
-      </button>
-    </div>
+    <button
+      onClick={() => signIn("google", { callbackUrl: window.location.href })}
+      className="px-4 py-2 text-white/70 hover:text-white text-sm transition-colors"
+    >
+      Sign in
+    </button>
   );
 }
 

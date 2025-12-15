@@ -1,7 +1,125 @@
 import { NextResponse } from "next/server";
 import * as cheerio from "cheerio";
 
-// Puppeteer removed - using cheerio only for better Vercel compatibility
+// Lazy load puppeteer only for Amazon
+let puppeteer: any = null;
+async function getPuppeteer() {
+  if (!puppeteer) {
+    puppeteer = await import("puppeteer");
+  }
+  return puppeteer;
+}
+
+async function scrapeAmazonWithPuppeteer(url: string) {
+  const puppeteerModule = await getPuppeteer();
+  const browser = await puppeteerModule.launch({
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+  });
+  
+  try {
+    const page = await browser.newPage();
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
+    
+    // Wait for product title to load
+    await page.waitForSelector('#productTitle, h1', { timeout: 10000 }).catch(() => {});
+    
+    // Extract data
+    const data = await page.evaluate(() => {
+      const getText = (selector: string) => {
+        const el = document.querySelector(selector);
+        return el ? el.textContent?.trim() || '' : '';
+      };
+      
+      const getAttr = (selector: string, attr: string) => {
+        const el = document.querySelector(selector);
+        return el ? el.getAttribute(attr) || '' : '';
+      };
+      
+      // Title
+      const title = getText('#productTitle') || 
+                    getText('h1.a-size-large') ||
+                    getText('h1') ||
+                    '';
+      
+      // Price - try multiple selectors
+      let price = '';
+      const priceSelectors = [
+        '#priceblock_dealprice .a-offscreen',
+        '#priceblock_ourprice .a-offscreen',
+        '#price .a-offscreen',
+        '.a-price .a-offscreen',
+        '[data-a-color="price"] .a-offscreen',
+      ];
+      
+      for (const selector of priceSelectors) {
+        const priceEl = document.querySelector(selector);
+        if (priceEl) {
+          const priceText = priceEl.textContent?.trim() || '';
+          const priceMatch = priceText.match(/[\d,]+\.?\d*/);
+          if (priceMatch) {
+            const priceValue = parseFloat(priceMatch[0].replace(/,/g, ''));
+            // Filter out per-count prices (usually very small)
+            if (priceValue >= 5) {
+              price = `$${priceMatch[0]}`;
+              break;
+            }
+          }
+        }
+      }
+      
+      // Discount percentage
+      let discount = '';
+      const discountText = document.body.textContent || '';
+      const discountMatch = discountText.match(/-(\d+)%/);
+      if (discountMatch) {
+        discount = `-${discountMatch[1]}%`;
+      }
+      
+      if (price && discount) {
+        price = `${price} ${discount}`;
+      }
+      
+      // Image
+      const image = getAttr('#landingImage', 'src') ||
+                    getAttr('#landingImage', 'data-old-src') ||
+                    getAttr('img[data-a-dynamic-image]', 'data-a-dynamic-image') ||
+                    '';
+      
+      // Parse data-a-dynamic-image if it's JSON
+      let parsedImage = image;
+      if (!parsedImage) {
+        const imgEl = document.querySelector('img[data-a-dynamic-image]');
+        if (imgEl) {
+          const dynamicData = imgEl.getAttribute('data-a-dynamic-image');
+          if (dynamicData) {
+            try {
+              const imageObj = JSON.parse(dynamicData);
+              const imageKeys = Object.keys(imageObj);
+              if (imageKeys.length > 0) {
+                parsedImage = imageKeys[0];
+              }
+            } catch (e) {
+              // Ignore
+            }
+          }
+        }
+      }
+      
+      // Description
+      const description = getText('#productDescription') ||
+                          getText('#feature-bullets') ||
+                          '';
+      
+      return { title, price, image: parsedImage, description };
+    });
+    
+    return data;
+  } finally {
+    await browser.close();
+  }
+}
 
 export async function scrapeProductData(url: string) {
   try {
@@ -9,15 +127,30 @@ export async function scrapeProductData(url: string) {
       throw new Error("URL is required");
     }
 
-    // Fetch the page with better headers
+    // Fetch the page with better headers for Amazon
     const isAmazon = url.includes("amazon.com") || url.includes("amzn.to");
-    const isShopify = url.includes("myshopify.com") || 
-                      url.includes("shopify.com") ||
-                      url.includes("thearcanelibrary.com") ||
-                      url.includes("fangamer.com") ||
-                      (url.includes("collections/") && url.includes("/products/"));
     
-    // Using cheerio for all scraping (including Amazon) for better Vercel compatibility
+    // For Amazon, use Puppeteer to handle JavaScript-rendered content
+    if (isAmazon) {
+      try {
+        console.log("Using Puppeteer for Amazon URL:", url);
+        const amazonData = await scrapeAmazonWithPuppeteer(url);
+        
+        // If we got data from Puppeteer, return it
+        if (amazonData.title || amazonData.price || amazonData.image) {
+          return {
+            title: amazonData.title || "Amazon Product",
+            image: amazonData.image || "",
+            description: amazonData.description || "Product from Amazon",
+            price: amazonData.price || "",
+            url,
+          };
+        }
+      } catch (puppeteerError: any) {
+        console.error("Puppeteer scraping failed, falling back to cheerio:", puppeteerError.message);
+        // Fall through to cheerio scraping
+      }
+    }
     
     // Regular scraping with cheerio for non-Amazon or as fallback
     const headers: HeadersInit = {
@@ -49,154 +182,74 @@ export async function scrapeProductData(url: string) {
     // Check if Amazon is blocking us (common patterns)
     if (isAmazon && (html.includes("Robot Check") || html.includes("captcha") || html.includes("Sorry! We couldn't find that page"))) {
       console.warn("Amazon may be blocking the scraper or page not found");
-      // Return minimal data rather than failing completely
-      return {
-        title: "Amazon Product",
-        image: "",
-        description: "Product from Amazon (scraping blocked)",
-        price: "",
-        url,
-      };
+      // Continue anyway, might still get some data
     }
     
     const $ = cheerio.load(html);
 
     // Extract metadata first (needed for fallbacks)
-    // For Amazon, try more specific selectors
-    let title = "";
-    if (isAmazon) {
-      // Amazon-specific title selectors
-      title = 
-        $('#productTitle').text()?.trim() ||
-        $('h1.a-size-large').text()?.trim() ||
-        $('h1.a-size-base-plus').text()?.trim() ||
-        $('span#productTitle').text()?.trim() ||
-        $('h1').first().text()?.trim() ||
-        "";
-      
-      // Clean up Amazon title (remove extra whitespace, "Amazon.com" suffix)
-      if (title) {
-        title = title.replace(/\s+/g, ' ').trim();
-        title = title.replace(/\s*-\s*Amazon\.com.*$/i, '').trim();
-        title = title.replace(/\s*Amazon\.com.*$/i, '').trim();
-      }
-    }
-    
-    // Fallback to meta tags if Amazon-specific selectors didn't work
-    if (!title) {
-      title =
-        $('meta[property="og:title"]').attr("content")?.trim() ||
-        $('meta[name="twitter:title"]').attr("content")?.trim() ||
-        $("title").text()?.trim() ||
-        $('h1').first().text()?.trim() ||
-        "";
-      
-      // Clean up title from meta tags too
-      if (title && isAmazon) {
-        title = title.replace(/\s*-\s*Amazon\.com.*$/i, '').trim();
-        title = title.replace(/\s*Amazon\.com.*$/i, '').trim();
-      }
-    }
+    // Try multiple sources for title
+    let title =
+      $('meta[property="og:title"]').attr("content")?.trim() ||
+      $('meta[name="twitter:title"]').attr("content")?.trim() ||
+      $("title").text()?.trim() ||
+      $('h1').first().text()?.trim() ||
+      "";
 
-    let image = "";
-    if (isAmazon) {
-      // Amazon-specific image selectors
-      image = 
-        $('#landingImage').attr('src') ||
-        $('#landingImage').attr('data-old-src') ||
-        $('#landingImage').attr('data-a-dynamic-image') ||
-        $('img[data-a-dynamic-image]').first().attr('data-a-dynamic-image') ||
-        $('img#landingImage').attr('src') ||
-        "";
-      
-      // Parse data-a-dynamic-image JSON if needed
-      if (!image) {
-        const dynamicImage = $('img[data-a-dynamic-image]').first().attr('data-a-dynamic-image');
-        if (dynamicImage) {
-          try {
-            const imageObj = JSON.parse(dynamicImage);
-            const imageKeys = Object.keys(imageObj);
-            if (imageKeys.length > 0) {
-              image = imageKeys[0];
-            }
-          } catch (e) {
-            // Ignore
-          }
-        }
-      }
-    }
-    
-    // Fallback to meta tags
-    if (!image) {
-      image =
-        $('meta[property="og:image"]').attr("content") ||
-        $('meta[name="twitter:image"]').attr("content") ||
-        $('meta[property="og:image:url"]').attr("content") ||
-        "";
-    }
+    let image =
+      $('meta[property="og:image"]').attr("content") ||
+      $('meta[name="twitter:image"]').attr("content") ||
+      $('meta[property="og:image:url"]').attr("content") ||
+      "";
 
-    let description = "";
-    if (isAmazon) {
-      // Amazon-specific description selectors
-      description =
-        $('#productDescription').text()?.trim() ||
-        $('#feature-bullets').text()?.trim() ||
-        $('.product-description').text()?.trim() ||
-        "";
-    }
-    
-    // Fallback to meta tags
-    if (!description) {
-      description =
-        $('meta[property="og:description"]').attr("content") ||
-        $('meta[name="twitter:description"]').attr("content") ||
-        $('meta[name="description"]').attr("content") ||
-        "";
-    }
+    let description =
+      $('meta[property="og:description"]').attr("content") ||
+      $('meta[name="twitter:description"]').attr("content") ||
+      $('meta[name="description"]').attr("content") ||
+      "";
 
-    // Shopify-specific extraction (Fangamer, etc.)
-    if (isShopify) {
-      console.log("Detected Shopify store, extracting product data...");
+    // Amazon-specific extraction (Amazon pages are heavily JavaScript-rendered, but we can try)
+    if (isAmazon) {
+      // First, try to extract from JSON-LD or inline JSON data (most reliable)
+      let amazonTitle = "";
+      let amazonPrice = "";
+      let amazonImage = "";
+      let amazonDescription = "";
       
-      let shopifyTitle = "";
-      let shopifyPrice = "";
-      let shopifyImage = "";
-      let shopifyDescription = "";
-      let shopifySize = "";
-      
-      // Try to extract from JSON-LD structured data (most reliable for Shopify)
+      // Try to find product data in JSON-LD or script tags
       $('script[type="application/ld+json"]').each((_, el) => {
         try {
           const jsonText = $(el).html() || "{}";
           const json = JSON.parse(jsonText);
           
-          // Handle array of JSON-LD objects
-          const productData = Array.isArray(json) 
-            ? json.find((item: any) => item['@type'] === 'Product')
-            : json['@type'] === 'Product' ? json : null;
-          
-          if (productData) {
-            if (!shopifyTitle && productData.name) shopifyTitle = productData.name;
-            if (!shopifyImage && productData.image) {
-              shopifyImage = Array.isArray(productData.image) 
-                ? productData.image[0] 
-                : typeof productData.image === 'string'
-                ? productData.image
-                : productData.image?.url || productData.image;
+          if (Array.isArray(json)) {
+            const product = json.find((item: any) => item['@type'] === 'Product');
+            if (product) {
+              if (!amazonTitle && product.name) amazonTitle = product.name;
+              if (!amazonImage && product.image) {
+                amazonImage = Array.isArray(product.image) ? product.image[0] : product.image;
+              }
+              if (!amazonDescription && product.description) amazonDescription = product.description;
+              if (!amazonPrice && product.offers) {
+                const offer = Array.isArray(product.offers) ? product.offers[0] : product.offers;
+                if (offer?.price) {
+                  amazonPrice = `$${offer.price}`;
+                  if (offer.priceCurrency) {
+                    // Already formatted
+                  }
+                }
+              }
             }
-            if (!shopifyDescription && productData.description) {
-              shopifyDescription = productData.description;
+          } else if (json['@type'] === 'Product') {
+            if (!amazonTitle && json.name) amazonTitle = json.name;
+            if (!amazonImage && json.image) {
+              amazonImage = Array.isArray(json.image) ? json.image[0] : json.image;
             }
-            if (!shopifyPrice && productData.offers) {
-              const offer = Array.isArray(productData.offers) 
-                ? productData.offers[0] 
-                : productData.offers;
+            if (!amazonDescription && json.description) amazonDescription = json.description;
+            if (!amazonPrice && json.offers) {
+              const offer = Array.isArray(json.offers) ? json.offers[0] : json.offers;
               if (offer?.price) {
-                const currency = offer.priceCurrency || 'USD';
-                const priceValue = typeof offer.price === 'string' 
-                  ? offer.price 
-                  : offer.price.toString();
-                shopifyPrice = `$${priceValue}`;
+                amazonPrice = `$${offer.price}`;
               }
             }
           }
@@ -204,246 +257,6 @@ export async function scrapeProductData(url: string) {
           // Ignore parse errors
         }
       });
-      
-      // Also try to extract from Shopify's product JSON object (often in script tags)
-      $('script').each((_, el) => {
-        try {
-          const scriptText = $(el).html() || "";
-          // Look for Shopify product JSON patterns
-          if (scriptText.includes('product') || scriptText.includes('Product') || scriptText.includes('variant')) {
-            // Try to find JSON objects with product data
-            const jsonMatches = scriptText.match(/\{[\s\S]*?"product"[\s\S]*?\}/g) || 
-                               scriptText.match(/\{[\s\S]*?"Product"[\s\S]*?\}/g) ||
-                               scriptText.match(/\{[\s\S]*?"title"[\s\S]*?"price"[\s\S]*?\}/g);
-            
-            for (const match of jsonMatches || []) {
-              try {
-                const productJson = JSON.parse(match);
-                if (productJson.title && !shopifyTitle) {
-                  shopifyTitle = productJson.title;
-                }
-                if (productJson.price && !shopifyPrice) {
-                  const priceNum = typeof productJson.price === 'number' 
-                    ? productJson.price / 100 // Shopify prices are often in cents
-                    : parseFloat(productJson.price);
-                  if (!isNaN(priceNum)) {
-                    shopifyPrice = `$${priceNum.toFixed(2)}`;
-                  }
-                }
-                if (productJson.images && productJson.images[0] && !shopifyImage) {
-                  shopifyImage = productJson.images[0];
-                }
-              } catch (e) {
-                // Not valid JSON, continue
-              }
-            }
-          }
-        } catch (e) {
-          // Ignore
-        }
-      });
-      
-      // Try Shopify-specific HTML selectors
-      if (!shopifyTitle) {
-        shopifyTitle = 
-          $('.product-title, .product__title, h1.product-title, h1.product__title').first().text().trim() ||
-          $('h1').first().text().trim() ||
-          $('h1.product-single__title').text().trim() ||
-          $('.product-single__title').text().trim() ||
-          "";
-      }
-      
-      if (!shopifyPrice) {
-        // Try various Shopify price selectors
-        const priceSelectors = [
-          '.product-price, .product__price',
-          '.price, .product-price__current',
-          '[data-product-price]',
-          '.money',
-          '.price-current, .price__current',
-          '.product-single__price',
-          '.product-price-wrapper',
-          'span[itemprop="price"]',
-        ];
-        
-        for (const selector of priceSelectors) {
-          const priceEl = $(selector).first();
-          if (priceEl.length) {
-            const priceText = priceEl.text().trim() || priceEl.attr('data-product-price') || priceEl.attr('content') || priceEl.attr('itemprop') === 'price' ? priceEl.text().trim() : '';
-            if (priceText) {
-              // Look for price pattern in the text
-              const priceMatch = priceText.match(/\$?([\d,]+\.?\d{0,2})/);
-              if (priceMatch) {
-                shopifyPrice = `$${priceMatch[1]}`;
-                break;
-              }
-            }
-          }
-        }
-        
-        // If still no price, try searching the entire page for price patterns near "price" text
-        if (!shopifyPrice) {
-          const pricePattern = /\$(\d+(?:\.\d{2})?)/;
-          const bodyText = $('body').text();
-          const match = bodyText.match(pricePattern);
-          if (match) {
-            shopifyPrice = `$${match[1]}`;
-          }
-        }
-      }
-      
-      if (!shopifyImage) {
-        // Try Shopify image selectors
-        shopifyImage = 
-          $('.product-image img, .product__image img, .product-photos img').first().attr('src') ||
-          $('img[data-product-image]').first().attr('src') ||
-          $('.product-gallery img').first().attr('src') ||
-          $('.product-single__photo img').first().attr('src') ||
-          $('.product__media img').first().attr('src') ||
-          $('img[data-src]').first().attr('data-src') ||
-          "";
-        
-        // Handle relative URLs and data-src attributes
-        if (shopifyImage && shopifyImage.startsWith('//')) {
-          shopifyImage = 'https:' + shopifyImage;
-        } else if (shopifyImage && shopifyImage.startsWith('/')) {
-          try {
-            const urlObj = new URL(url);
-            shopifyImage = urlObj.origin + shopifyImage;
-          } catch (e) {
-            // Ignore
-          }
-        }
-        
-        // If still no image, try to get from meta tags (already set above, but check again)
-        if (!shopifyImage) {
-          shopifyImage = image || "";
-        }
-      }
-      
-      if (!shopifyDescription) {
-        shopifyDescription = 
-          $('.product-description, .product__description, .product-content').first().text().trim() ||
-          $('[data-product-description]').first().text().trim() ||
-          $('.product-single__description').text().trim() ||
-          $('.product__description').text().trim() ||
-          "";
-      }
-      
-      // Try to detect size options for clothing
-      const sizeSelectors = [
-        'select[name*="size"] option:selected',
-        'input[name*="size"]:checked',
-        '.product-option input[type="radio"]:checked',
-        '[data-option-name*="size"] input:checked',
-        '.variant-selector input:checked',
-      ];
-      
-      for (const selector of sizeSelectors) {
-        const sizeEl = $(selector).first();
-        if (sizeEl.length) {
-          const sizeText = sizeEl.attr('value') || sizeEl.text().trim() || sizeEl.attr('data-value');
-          if (sizeText && sizeText !== 'Select' && sizeText !== 'Choose') {
-            shopifySize = sizeText;
-            break;
-          }
-        }
-      }
-      
-      // If we got Shopify data, use it
-      if (shopifyTitle || shopifyPrice || shopifyImage) {
-        return {
-          title: shopifyTitle || title.trim() || "Product",
-          image: shopifyImage || image || "",
-          description: shopifyDescription || description.trim() || "",
-          price: shopifyPrice || "",
-          size: shopifySize || "",
-          url,
-        };
-      }
-    }
-
-      // Amazon-specific extraction (Amazon pages are heavily JavaScript-rendered, but we can try)
-      if (isAmazon) {
-        // First, try to extract from JSON-LD or inline JSON data (most reliable)
-        let amazonTitle = "";
-        let amazonPrice = "";
-        let amazonImage = "";
-        let amazonDescription = "";
-        
-        // Try to find product data in JSON-LD or script tags
-        $('script[type="application/ld+json"]').each((_, el) => {
-          try {
-            const jsonText = $(el).html() || "{}";
-            const json = JSON.parse(jsonText);
-            
-            if (Array.isArray(json)) {
-              const product = json.find((item: any) => item['@type'] === 'Product');
-              if (product) {
-                if (!amazonTitle && product.name) amazonTitle = product.name;
-                if (!amazonImage && product.image) {
-                  amazonImage = Array.isArray(product.image) ? product.image[0] : product.image;
-                }
-                if (!amazonDescription && product.description) amazonDescription = product.description;
-                if (!amazonPrice && product.offers) {
-                  const offer = Array.isArray(product.offers) ? product.offers[0] : product.offers;
-                  if (offer?.price) {
-                    const priceValue = typeof offer.price === 'string' ? offer.price : offer.price.toString();
-                    amazonPrice = `$${priceValue}`;
-                  }
-                }
-              }
-            } else if (json['@type'] === 'Product') {
-              if (!amazonTitle && json.name) amazonTitle = json.name;
-              if (!amazonImage && json.image) {
-                amazonImage = Array.isArray(json.image) ? json.image[0] : json.image;
-              }
-              if (!amazonDescription && json.description) amazonDescription = json.description;
-              if (!amazonPrice && json.offers) {
-                const offer = Array.isArray(json.offers) ? json.offers[0] : json.offers;
-                if (offer?.price) {
-                  const priceValue = typeof offer.price === 'string' ? offer.price : offer.price.toString();
-                  amazonPrice = `$${priceValue}`;
-                }
-              }
-            }
-          } catch (e) {
-            // Ignore parse errors
-          }
-        });
-        
-        // Try to extract from Amazon's inline JavaScript data
-        $('script').each((_, el) => {
-          if (amazonPrice) return; // Already found
-          const scriptText = $(el).html() || "";
-          // Look for price in various Amazon data structures
-          const pricePatterns = [
-            /"price"\s*:\s*"([^"]+)"/,
-            /"price"\s*:\s*(\d+\.?\d*)/,
-            /"displayPrice"\s*:\s*"([^"]+)"/,
-            /"formattedPrice"\s*:\s*"([^"]+)"/,
-            /data-price="([^"]+)"/,
-            /priceToPay["\s]*:\s*["\s]*([^"]+)/,
-          ];
-          
-          for (const pattern of pricePatterns) {
-            const match = scriptText.match(pattern);
-            if (match && match[1]) {
-              let priceValue = match[1];
-              // Clean up the price value
-              if (!priceValue.includes('$')) {
-                const numMatch = priceValue.match(/[\d,]+\.?\d*/);
-                if (numMatch) {
-                  amazonPrice = `$${numMatch[0]}`;
-                  break;
-                }
-              } else {
-                amazonPrice = priceValue;
-                break;
-              }
-            }
-          }
-        });
       
       // Try to extract from window.ue_* or other inline data
       const scriptTags = $('script').toArray();
@@ -478,7 +291,6 @@ export async function scrapeProductData(url: string) {
       // Amazon price extraction - get the main displayed price (not per-count)
       // If we didn't get price from JSON-LD, try HTML selectors
       let discountPercent = "";
-      let originalPrice = "";
       
       // Strategy: Look specifically in price blocks, avoid per-count prices
       // The main price is usually in #priceblock_dealprice or #priceblock_ourprice
@@ -486,268 +298,134 @@ export async function scrapeProductData(url: string) {
       // If we didn't get price from JSON-LD, try HTML selectors
       if (!amazonPrice) {
         // First, try deal price block (most reliable for sale items)
-        const dealPriceBlock = $('#priceblock_dealprice, .a-price.a-text-price.a-size-medium.apexPriceToPay');
-        if (dealPriceBlock.length) {
-          const dealPriceEl = dealPriceBlock.find('.a-offscreen').first();
-          if (dealPriceEl.length) {
-            const priceText = dealPriceEl.text().trim();
+      const dealPriceBlock = $('#priceblock_dealprice');
+      if (dealPriceBlock.length) {
+        const dealPriceEl = dealPriceBlock.find('.a-offscreen').first();
+        if (dealPriceEl.length) {
+          const priceText = dealPriceEl.text().trim();
+          const priceMatch = priceText.match(/[\d,]+\.?\d*/);
+          if (priceMatch) {
+            const priceValue = parseFloat(priceMatch[0].replace(/,/g, ''));
+            // Check if this block contains per-count text
+            const blockText = dealPriceBlock.text();
+            const hasPerCount = blockText.includes('/count') || blockText.includes('per count');
+            
+            // If no per-count indicator, or price is reasonable, use it
+            if (!hasPerCount || priceValue >= 20) {
+              amazonPrice = `$${priceMatch[0]}`;
+            }
+          }
+        }
+      }
+      
+      // If no deal price, try regular price block
+      if (!amazonPrice) {
+        const ourPriceBlock = $('#priceblock_ourprice');
+        if (ourPriceBlock.length) {
+          const ourPriceEl = ourPriceBlock.find('.a-offscreen').first();
+          if (ourPriceEl.length) {
+            const priceText = ourPriceEl.text().trim();
             const priceMatch = priceText.match(/[\d,]+\.?\d*/);
             if (priceMatch) {
               const priceValue = parseFloat(priceMatch[0].replace(/,/g, ''));
-              // Check if this block contains per-count text
-              const blockText = dealPriceBlock.text();
-              const hasPerCount = blockText.includes('/count') || blockText.includes('per count') || blockText.includes('per unit');
+              const blockText = ourPriceBlock.text();
+              const hasPerCount = blockText.includes('/count') || blockText.includes('per count');
               
-              // If no per-count indicator, or price is reasonable, use it
               if (!hasPerCount || priceValue >= 20) {
                 amazonPrice = `$${priceMatch[0]}`;
-                
-                // Try to get original price (strikethrough price)
-                const originalPriceEl = dealPriceBlock.siblings('.a-text-strike, .a-text-price').find('.a-offscreen').first();
-                if (originalPriceEl.length) {
-                  const origText = originalPriceEl.text().trim();
-                  const origMatch = origText.match(/[\d,]+\.?\d*/);
-                  if (origMatch) {
-                    originalPrice = `$${origMatch[0]}`;
-                  }
-                }
               }
             }
           }
         }
-        
-        // If no deal price, try regular price block
-        if (!amazonPrice) {
-          const ourPriceBlock = $('#priceblock_ourprice, .a-price.a-text-price.a-size-medium');
-          if (ourPriceBlock.length) {
-            const ourPriceEl = ourPriceBlock.find('.a-offscreen').first();
-            if (ourPriceEl.length) {
-              const priceText = ourPriceEl.text().trim();
-              const priceMatch = priceText.match(/[\d,]+\.?\d*/);
-              if (priceMatch) {
-                const priceValue = parseFloat(priceMatch[0].replace(/,/g, ''));
-                const blockText = ourPriceBlock.text();
-                const hasPerCount = blockText.includes('/count') || blockText.includes('per count') || blockText.includes('per unit');
-                
-                if (!hasPerCount || priceValue >= 20) {
-                  amazonPrice = `$${priceMatch[0]}`;
-                }
-              }
-            }
-          }
-        }
-        
-        // Try new Amazon price selectors (2024+ layout)
-        if (!amazonPrice) {
-          const newPriceSelectors = [
-            '.a-price.a-text-price[data-a-color="base"] .a-offscreen',
-            '.a-price .a-offscreen',
-            '[data-a-color="price"] .a-offscreen',
-            '.apexPriceToPay .a-offscreen',
-            '.a-price.a-text-price .a-offscreen',
-            '#priceblock_ourprice .a-offscreen',
-            '#priceblock_dealprice .a-offscreen',
-            '.a-price-whole',
-            '.a-price.a-text-price.a-size-medium .a-offscreen',
-            '.a-price.a-text-price.a-size-base .a-offscreen',
-          ];
+      }
+      
+      // Fallback: Look for price in main price area, but filter out per-count
+      if (!amazonPrice) {
+        const priceBlock = $('#price');
+        if (priceBlock.length) {
+          const blockText = priceBlock.text();
+          const hasPerCount = blockText.includes('/count') || blockText.includes('per count');
           
-          for (const selector of newPriceSelectors) {
-            const priceEl = $(selector).first();
-            if (priceEl.length) {
-              let priceText = priceEl.text().trim();
-              
-              // If it's a whole price, try to get cents too
-              if (selector.includes('a-price-whole')) {
-                const centsEl = priceEl.siblings('.a-price-fraction');
-                if (centsEl.length) {
-                  priceText = priceText + '.' + centsEl.text().trim();
-                }
-              }
-              
-              // Also check parent for whole/fraction structure
-              if (!priceText || priceText.length < 2) {
-                const parent = priceEl.parent();
-                const whole = parent.find('.a-price-whole').text().trim();
-                const fraction = parent.find('.a-price-fraction').text().trim();
-                if (whole) {
-                  priceText = whole + (fraction ? '.' + fraction : '');
-                }
-              }
-              
-              const priceMatch = priceText.match(/[\d,]+\.?\d*/);
-              if (priceMatch) {
-                const priceValue = parseFloat(priceMatch[0].replace(/,/g, ''));
-                if (priceValue >= 0.01 && priceValue <= 100000) { // Reasonable price range
-                  amazonPrice = `$${priceMatch[0]}`;
-                  break;
-                }
-              }
-            }
-          }
-        }
-        
-        // Try extracting from data attributes
-        if (!amazonPrice) {
-          const priceData = $('[data-a-color="price"]').first().attr('data-a-color-price');
-          if (priceData) {
-            const priceMatch = priceData.match(/[\d,]+\.?\d*/);
+          // Get all prices from this block
+          const allPrices: Array<{ price: string; value: number }> = [];
+          priceBlock.find('.a-offscreen').each((_, el) => {
+            const priceText = $(el).text().trim();
+            const priceMatch = priceText.match(/[\d,]+\.?\d*/);
             if (priceMatch) {
               const priceValue = parseFloat(priceMatch[0].replace(/,/g, ''));
-              if (priceValue >= 0.01 && priceValue <= 100000) {
-                amazonPrice = `$${priceMatch[0]}`;
+              if (priceValue >= 10) {
+                allPrices.push({ price: `$${priceMatch[0]}`, value: priceValue });
               }
             }
-          }
-        }
-        
-        // Fallback: Look for price in main price area, but filter out per-count
-        if (!amazonPrice) {
-          const priceBlock = $('#price, .a-section.a-spacing-none.aok-align-center');
-          if (priceBlock.length) {
-            const blockText = priceBlock.text();
-            const hasPerCount = blockText.includes('/count') || blockText.includes('per count') || blockText.includes('per unit');
-            
-            // Get all prices from this block
-            const allPrices: Array<{ price: string; value: number }> = [];
-            priceBlock.find('.a-offscreen, .a-price-whole').each((_, el) => {
-              let priceText = $(el).text().trim();
-              // Handle whole price + fraction
-              if ($(el).hasClass('a-price-whole')) {
-                const centsEl = $(el).siblings('.a-price-fraction');
-                if (centsEl.length) {
-                  priceText = priceText + '.' + centsEl.text().trim();
-                }
-              }
-              
-              const priceMatch = priceText.match(/[\d,]+\.?\d*/);
-              if (priceMatch) {
-                const priceValue = parseFloat(priceMatch[0].replace(/,/g, ''));
-                if (priceValue >= 1 && priceValue <= 100000) {
-                  allPrices.push({ price: `$${priceMatch[0]}`, value: priceValue });
-                }
-              }
-            });
-            
-            // If we have prices and no per-count, or if we have multiple prices, pick the largest
-            if (allPrices.length > 0) {
-              if (!hasPerCount || allPrices.length === 1) {
-                allPrices.sort((a, b) => b.value - a.value);
+          });
+          
+          // If we have prices and no per-count, or if we have multiple prices, pick the largest
+          if (allPrices.length > 0) {
+            if (!hasPerCount || allPrices.length === 1) {
+              allPrices.sort((a, b) => b.value - a.value);
+              amazonPrice = allPrices[0].price;
+            } else {
+              // If there's per-count, pick the larger price (main price)
+              allPrices.sort((a, b) => b.value - a.value);
+              if (allPrices.length >= 2 && allPrices[0].value > allPrices[1].value * 2) {
+                // If largest is much bigger, it's likely the main price
                 amazonPrice = allPrices[0].price;
-              } else {
-                // If there's per-count, pick the larger price (main price)
-                allPrices.sort((a, b) => b.value - a.value);
-                if (allPrices.length >= 2 && allPrices[0].value > allPrices[1].value * 2) {
-                  // If largest is much bigger, it's likely the main price
-                  amazonPrice = allPrices[0].price;
-                }
               }
             }
           }
         }
+      }
       } // End of if (!amazonPrice) block
       
-      // Extract discount percentage and original price from the price area
+      // Extract discount percentage from the price area
       if (amazonPrice) {
         // Look for discount percentage near the price
-        const priceBlock = $('#price, #priceblock_dealprice, #priceblock_ourprice, .a-section.a-spacing-none.aok-align-center').first();
+        const priceBlock = $('#price, #priceblock_dealprice, #priceblock_ourprice').first();
         const priceBlockText = priceBlock.text();
         
-        // Look for patterns like "-34%" or "Save 34%" in the price block
-        const percentMatch = priceBlockText.match(/(?:Save\s+|-|save\s+)(\d+)%/i);
+        // Look for patterns like "-34%" in the price block
+        const percentMatch = priceBlockText.match(/-(\d+)%/);
         if (percentMatch) {
           discountPercent = `-${percentMatch[1]}%`;
         } else {
           // Try looking in discount badges
-          const discountBadge = $('.a-size-large.a-color-price, .a-color-price, .savingsPercentage').first();
-          const badgeText = discountBadge.text().trim();
-          const badgeMatch = badgeText.match(/(?:Save\s+|-|save\s+)?(\d+)%/i);
+          const discountBadge = $('.a-size-large.a-color-price, .a-color-price').first().text().trim();
+          const badgeMatch = discountBadge.match(/-?(\d+)%/);
           if (badgeMatch) {
             discountPercent = `-${badgeMatch[1]}%`;
           }
         }
         
-        // Try to get original/strikethrough price if we don't have it
-        if (!originalPrice) {
-          const strikePrice = $('.a-text-strike .a-offscreen, .a-text-price.a-color-secondary .a-offscreen').first();
-          if (strikePrice.length) {
-            const strikeText = strikePrice.text().trim();
-            const strikeMatch = strikeText.match(/[\d,]+\.?\d*/);
-            if (strikeMatch) {
-              originalPrice = `$${strikeMatch[0]}`;
-            }
-          }
-        }
-        
-        // Format: price with discount and original price if available
-        if (originalPrice && discountPercent) {
-          amazonPrice = `${originalPrice} → ${amazonPrice} ${discountPercent}`;
-        } else if (originalPrice) {
-          amazonPrice = `${originalPrice} → ${amazonPrice}`;
-        } else if (discountPercent) {
+        // Format: price with discount if available
+        if (discountPercent) {
           amazonPrice = `${amazonPrice} ${discountPercent}`;
         }
       }
       
       // Amazon image extraction (if not already found from JSON-LD)
-      // Try to get highest resolution image available
       if (!amazonImage) {
-        // First try to get from data-a-dynamic-image (contains multiple sizes)
-        const dynamicImageEl = $('img[data-a-dynamic-image]').first();
-        if (dynamicImageEl.length) {
+        amazonImage = 
+          $('#landingImage').attr('src') ||
+          $('#landingImage').attr('data-old-src') ||
+          $('#imgBlkFront').attr('src') ||
+          $('.a-dynamic-image').first().attr('src') ||
+          $('img[data-a-dynamic-image]').first().attr('data-a-dynamic-image') ||
+          "";
+        
+        // Parse data-a-dynamic-image if it's JSON
+        if (!amazonImage && $('img[data-a-dynamic-image]').length) {
           try {
-            const dynamicImageData = dynamicImageEl.attr('data-a-dynamic-image');
+            const dynamicImageData = $('img[data-a-dynamic-image]').first().attr('data-a-dynamic-image');
             if (dynamicImageData) {
               const imageObj = JSON.parse(dynamicImageData);
               const imageKeys = Object.keys(imageObj);
               if (imageKeys.length > 0) {
-                // Sort by size (larger images usually have longer URLs or specific patterns)
-                // Prefer images with "._AC_" in the name (Amazon's image format)
-                const sortedKeys = imageKeys.sort((a, b) => {
-                  // Prefer images with higher resolution indicators
-                  const aHasAC = a.includes('._AC_');
-                  const bHasAC = b.includes('._AC_');
-                  if (aHasAC && !bHasAC) return -1;
-                  if (!aHasAC && bHasAC) return 1;
-                  // Prefer longer URLs (often higher res)
-                  return b.length - a.length;
-                });
-                amazonImage = sortedKeys[0];
-                
-                // Try to get a higher resolution version by replacing size parameters
-                if (amazonImage.includes('._AC_')) {
-                  // Replace with larger size (SL1500 = 1500px, SL1000 = 1000px, etc.)
-                  amazonImage = amazonImage.replace(/\._AC_SL\d+_/, '._AC_SL1500_');
-                  amazonImage = amazonImage.replace(/\._AC_SX\d+_/, '._AC_SX1500_');
-                }
+                amazonImage = imageKeys[0];
               }
             }
           } catch (e) {
-            // Fall back to src attribute
-            amazonImage = dynamicImageEl.attr('src') || "";
+            // Ignore parse errors
           }
-        }
-        
-        // Fallback to other selectors
-        if (!amazonImage) {
-          amazonImage = 
-            $('#landingImage').attr('src') ||
-            $('#landingImage').attr('data-old-src') ||
-            $('#imgBlkFront').attr('src') ||
-            $('.a-dynamic-image').first().attr('src') ||
-            $('img#main-image').attr('src') ||
-            "";
-        }
-        
-        // Try to upgrade image quality if we have a low-res version
-        if (amazonImage) {
-          // Replace common low-res patterns with high-res
-          amazonImage = amazonImage.replace(/\._AC_SL\d+_/, '._AC_SL1500_');
-          amazonImage = amazonImage.replace(/\._AC_SX\d+_/, '._AC_SX1500_');
-          amazonImage = amazonImage.replace(/\._AC_UL\d+_/, '._AC_UL1500_');
-          // Remove size restrictions
-          amazonImage = amazonImage.replace(/\._AC_SL\d+\./, '._AC_SL1500.');
-          amazonImage = amazonImage.replace(/\._AC_SX\d+\./, '._AC_SX1500.');
         }
       }
       
@@ -966,8 +644,8 @@ export async function scrapeProductData(url: string) {
     if (!price) {
       const metaPrice = 
         $('meta[property="product:price:amount"]').attr("content") ||
-        ($('meta[property="product:price:currency"]').attr("content") ? 
-          $('meta[property="product:price:amount"]').attr("content") : null) ||
+        $('meta[property="product:price:currency"]').attr("content") ? 
+          $('meta[property="product:price:amount"]').attr("content") : null ||
         $('meta[name="price"]').attr("content") ||
         $('meta[itemprop="price"]').attr("content") ||
         "";
@@ -979,57 +657,7 @@ export async function scrapeProductData(url: string) {
       }
     }
 
-    // 3. Amazon-specific price extraction (if isAmazon)
-    if (!price && isAmazon) {
-      const amazonPriceSelectors = [
-        '#priceblock_dealprice .a-offscreen',
-        '#priceblock_ourprice .a-offscreen',
-        '#price .a-offscreen',
-        '.a-price .a-offscreen',
-        '[data-a-color="price"] .a-offscreen',
-        '.a-price-whole',
-        '#priceblock_saleprice .a-offscreen',
-        '#priceblock_dealprice',
-        '#priceblock_ourprice',
-        '.a-price-range .a-offscreen',
-        '[data-a-color="base"] .a-offscreen',
-      ];
-      
-      for (const selector of amazonPriceSelectors) {
-        const priceEl = $(selector).first();
-        if (priceEl.length) {
-          let priceText = priceEl.text().trim();
-          // For .a-offscreen, also check parent
-          if (!priceText && selector.includes('.a-offscreen')) {
-            priceText = priceEl.parent().text().trim();
-          }
-          if (priceText) {
-            const priceMatch = priceText.match(/[\d,]+\.?\d*/);
-            if (priceMatch) {
-              const priceValue = parseFloat(priceMatch[0].replace(/,/g, ''));
-              // Filter out per-count prices (usually very small)
-              if (priceValue >= 1) {
-                price = `$${priceMatch[0]}`;
-                break;
-              }
-            }
-          }
-        }
-      }
-      
-      // Try to find price in data attributes
-      if (!price) {
-        const priceData = $('[data-a-color="price"]').first().attr('data-a-color-price');
-        if (priceData) {
-          const priceMatch = priceData.match(/[\d,]+\.?\d*/);
-          if (priceMatch) {
-            price = `$${priceMatch[0]}`;
-          }
-        }
-      }
-    }
-
-    // 4. Try common CSS selectors for price elements (non-Amazon or fallback)
+    // 3. Try common CSS selectors for price elements
     if (!price) {
       const priceSelectors = [
         '[itemprop="price"]',
@@ -1060,7 +688,7 @@ export async function scrapeProductData(url: string) {
       }
     }
 
-    // 5. Try to find price in text (common patterns) - more comprehensive
+    // 4. Try to find price in text (common patterns) - more comprehensive
     if (!price) {
       const pricePatterns = [
         /\$\s*[\d,]+\.?\d{0,2}/,  // $123.45 or $1,234

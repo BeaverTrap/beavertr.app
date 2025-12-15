@@ -1,47 +1,13 @@
+import Database from 'better-sqlite3';
+import { drizzle } from 'drizzle-orm/better-sqlite3';
+import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import * as schema from './schema';
 
+const sqlite = new Database('./dev.db');
+const db = drizzle(sqlite, { schema });
+
 export function initDatabase() {
-  // Run migrations - use the appropriate migrator based on environment
-  const databaseUrl = process.env.DATABASE_URL;
-  
-  if (databaseUrl && databaseUrl.startsWith('libsql://')) {
-    // Production: Use Turso/libSQL
-    const { createClient } = require('@libsql/client');
-    const { drizzle } = require('drizzle-orm/libsql');
-    const { migrate } = require('drizzle-orm/libsql/migrator');
-    
-    const client = createClient({
-      url: databaseUrl,
-      authToken: process.env.TURSO_AUTH_TOKEN,
-    });
-    const db = drizzle(client, { schema });
-    migrate(db, { migrationsFolder: './drizzle' });
-  } else {
-    // Development: Use local SQLite file
-    // Only load better-sqlite3 in development (not on Vercel)
-    if (process.env.VERCEL) {
-      throw new Error('SQLite file database not supported on Vercel. Please use Turso (libsql://) database URL.');
-    }
-    
-    try {
-      // Only load better-sqlite3 if not on Vercel and not during build
-      if (process.env.VERCEL || process.env.NEXT_PHASE === 'phase-production-build') {
-        throw new Error('better-sqlite3 not available on Vercel');
-      }
-      // Use Function constructor to create a truly dynamic require that webpack/turbopack can't analyze
-      const requireBetterSqlite3 = new Function('moduleName', 'return require(moduleName)');
-      const Database = requireBetterSqlite3('better-sqlite3');
-      const drizzleModule = requireBetterSqlite3('drizzle-orm/better-sqlite3');
-      const { drizzle } = drizzleModule;
-      const migrateModule = requireBetterSqlite3('drizzle-orm/better-sqlite3/migrator');
-      const { migrate } = migrateModule;
-      
-      const sqlite = new Database('./dev.db');
-      const db = drizzle(sqlite, { schema });
-      migrate(db, { migrationsFolder: './drizzle' });
-    } catch (error: any) {
-      throw new Error(`Failed to load better-sqlite3. This is only available in development. Error: ${error.message}`);
-    }
-  }
+  // Run migrations
+  migrate(db, { migrationsFolder: './drizzle' });
 }
 

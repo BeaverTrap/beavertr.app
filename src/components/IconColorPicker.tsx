@@ -8,17 +8,11 @@ import * as HiIcons from "react-icons/hi";
 import * as MdIcons from "react-icons/md";
 import * as IoIcons from "react-icons/io5";
 
-// Curated list of popular icons including holiday icons
+// Curated list of ~50 popular, generic icons
 const iconList = [
   // FontAwesome
   "FaGift", "FaHeart", "FaStar", "FaHome", "FaUser", "FaShoppingCart", "FaGamepad", "FaMusic", "FaCamera", "FaBook",
   "FaCar", "FaPlane", "FaBicycle", "FaLaptop", "FaMobile", "FaTv", "FaHeadphones", "FaDice", "FaPuzzlePiece", "FaRocket",
-  // Holiday Icons - Christmas
-  "FaTree", "FaSnowflake", "FaCandyCane", "FaSnowman",
-  // Holiday Icons - Birthday & Celebrations  
-  "FaBirthdayCake", "FaCake", "FaGlassCheers",
-  // Holiday Icons - Hanukkah (Star of David represented by star, menorah by fire/flame)
-  "FaFire", // Represents menorah candles
   // Feather
   "FiGift", "FiHeart", "FiStar", "FiHome", "FiUser", "FiShoppingCart", "FiMusic", "FiCamera", "FiBook", "FiTruck",
   "FiZap", "FiSun", "FiMoon", "FiCoffee", "FiShoppingBag", "FiTag", "FiBox", "FiPackage", "FiGrid", "FiLayers",
@@ -28,7 +22,6 @@ const iconList = [
   // Material Design
   "MdGift", "MdFavorite", "MdStar", "MdHome", "MdPerson", "MdShoppingCart", "MdMusicNote", "MdCamera", "MdBook", "MdToys",
   "MdDirectionsCar", "MdFlight", "MdComputer", "MdPhone", "MdTv", "MdHeadset", "MdSportsEsports", "MdDiamond", "MdLocalMovies", "MdRestaurant",
-  "MdCake", "MdCelebration", "MdLocalFlorist", "MdEmojiEvents", // Trophy/award for celebrations
   // Ionicons
   "IoGift", "IoHeart", "IoStar", "IoHome", "IoPerson", "IoCart", "IoMusicalNote", "IoCamera", "IoBook", "IoCarSport",
   "IoAirplane", "IoBicycle", "IoDesktop", "IoPhonePortrait", "IoTv", "IoHeadset", "IoGameController", "IoDiamond", "IoFilm", "IoRestaurant",

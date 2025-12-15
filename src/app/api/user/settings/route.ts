@@ -13,7 +13,7 @@ export async function GET() {
 
   try {
     // Try to find user by ID first, then by email if ID doesn't match
-    let [user] = await (db as any)
+    let [user] = await db
       .select({
         id: users.id,
         name: users.name,

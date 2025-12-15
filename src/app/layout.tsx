@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import SessionProvider from "@/components/SessionProvider";
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -12,9 +13,6 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "beavertr.app — Art, Web Design & Vibe Coding",
   description: "My space for art, web design, and coding projects. Always experimenting, always building.",
-  verification: {
-    google: "0XEjgCMr-4uKXcXgFHbNRorxXbvN907V91S2UYcjmxY",
-  },
 };
 
 export default function RootLayout({
@@ -23,11 +21,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" suppressHydrationWarning>
       <body
-        className={`${inter.variable} font-sans antialiased`}
+        className={`${inter.variable} font-sans antialiased bg-base-100 text-base-content`}
       >
-        <SessionProvider>{children}</SessionProvider>
+        <ThemeProvider>
+          <SessionProvider>{children}</SessionProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

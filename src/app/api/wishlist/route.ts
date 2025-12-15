@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { getWishlistItems, addWishlistItem, deleteWishlistItem, updateWishlistItem, getDefaultWishlist } from "@/lib/wishlist";
+import { getWishlistItems, addWishlistItem, deleteWishlistItem, updateWishlistItem } from "@/lib/wishlist";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -29,10 +29,7 @@ export async function POST(request: Request) {
     );
   }
 
-  // Get or create default wishlist for the user
-  const defaultWishlist = await getDefaultWishlist(session.user.id);
-
-  const item = await addWishlistItem(defaultWishlist.id, session.user.id, {
+  const item = await addWishlistItem(session.user.id, {
     title: title || "Untitled",
     url,
     image,

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import Navbar from "@/components/Navbar";
 import AuthButton from "@/components/AuthButton";
 import WishlistList from "@/components/WishlistList";
 
@@ -81,63 +82,27 @@ export default function UserWishlistPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-black to-zinc-900 text-white flex items-center justify-center">
-        <div className="text-zinc-400">Loading...</div>
+      <div className="min-h-screen bg-base-100 flex items-center justify-center">
+        <Navbar />
+        <div className="text-base-content/70">Loading...</div>
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-black to-zinc-900 text-white">
-        <nav className="border-b border-zinc-800/50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
-              <Link
-                href="/"
-                className="text-xl font-bold bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent"
-              >
-                beavertr.app
-              </Link>
-            </div>
-          </div>
-        </nav>
+      <div className="min-h-screen bg-base-100">
+        <Navbar />
         <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
-          <p className="text-zinc-400">User not found</p>
+          <p className="text-base-content/70">User not found</p>
         </main>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-black to-zinc-900 text-white">
-      <nav className="border-b border-zinc-800/50 backdrop-blur-sm bg-zinc-900/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link
-              href="/"
-              className="text-xl font-bold bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent"
-            >
-              beavertr.app
-            </Link>
-            <div className="flex items-center gap-6">
-              <Link
-                href="/wishlist"
-                className="text-sm text-zinc-400 hover:text-white transition-colors"
-              >
-                My Wishlists
-              </Link>
-              <Link
-                href="/wishlist/browse"
-                className="text-sm text-zinc-400 hover:text-white transition-colors"
-              >
-                Browse
-              </Link>
-              <AuthButton />
-            </div>
-          </div>
-        </div>
-      </nav>
+    <div className="min-h-screen bg-base-100">
+      <Navbar />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* User Profile Header */}
@@ -150,12 +115,12 @@ export default function UserWishlistPage() {
             />
           )}
           <div>
-            <h1 className="text-4xl font-bold">{user.name || user.email}</h1>
+            <h1 className="text-4xl font-bold text-base-content">{user.name || user.email}</h1>
             {user.username && (
-              <p className="text-zinc-400">@{user.username}</p>
+              <p className="text-base-content/70">@{user.username}</p>
             )}
             {user.bio && (
-              <p className="text-zinc-300 mt-2">{user.bio}</p>
+              <p className="text-base-content/80 mt-2">{user.bio}</p>
             )}
           </div>
         </div>
@@ -169,8 +134,8 @@ export default function UserWishlistPage() {
                 onClick={() => setActiveWishlistId(wishlist.id)}
                 className={`px-4 py-2 rounded-lg font-medium transition-all ${
                   activeWishlistId === wishlist.id
-                    ? "bg-white text-black"
-                    : "bg-zinc-800 text-white hover:bg-zinc-700"
+                    ? "bg-base-content text-base-100"
+                    : "bg-base-200 text-base-content hover:bg-base-300"
                 }`}
               >
                 {wishlist.name}
@@ -183,7 +148,7 @@ export default function UserWishlistPage() {
         {activeWishlistId ? (
           <WishlistList wishlistId={activeWishlistId} isOwner={session?.user?.id === user.id} />
         ) : (
-          <div className="text-center py-16 text-zinc-400">
+          <div className="text-center py-16 text-base-content/70">
             <p>No wishlists available</p>
           </div>
         )}

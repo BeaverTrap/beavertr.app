@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Navbar from "@/components/Navbar";
 import AuthButton from "@/components/AuthButton";
 import WishlistIcon from "@/components/WishlistIcon";
 import ImageCropper from "@/components/ImageCropper";
@@ -44,7 +45,6 @@ export default function ProfilePage() {
   const [isOwnProfile, setIsOwnProfile] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [showCropper, setShowCropper] = useState(false);
   const [imageToCrop, setImageToCrop] = useState<string | null>(null);
   const [fileToCrop, setFileToCrop] = useState<File | null>(null);
@@ -189,23 +189,23 @@ export default function ProfilePage() {
 
   if (status === "loading" || loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-black to-zinc-900 text-white flex items-center justify-center">
-        <div className="text-zinc-400">Loading...</div>
+      <div className="min-h-screen bg-base-100 flex items-center justify-center">
+        <div className="text-base-content/70">Loading...</div>
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-black to-zinc-900 text-white flex items-center justify-center">
+      <div className="min-h-screen bg-base-100 flex items-center justify-center">
         <div className="text-center">
           {!session ? (
             <>
-              <p className="text-zinc-400 mb-4">Please sign in to view your profile</p>
+              <p className="text-base-content/70 mb-4">Please sign in to view your profile</p>
               <AuthButton />
             </>
           ) : (
-            <p className="text-zinc-400">Profile not found</p>
+            <p className="text-base-content/70">Profile not found</p>
           )}
         </div>
       </div>
@@ -213,44 +213,12 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-black to-zinc-900 text-white">
-      <nav className="border-b border-zinc-800/50 backdrop-blur-sm bg-zinc-900/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link
-              href="/"
-              className="text-xl font-bold bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent"
-            >
-              beavertr.app
-            </Link>
-            <div className="flex items-center gap-6">
-              <Link
-                href="/wishlist"
-                className="text-sm text-zinc-400 hover:text-white transition-colors"
-              >
-                My Wishlists
-              </Link>
-              <Link
-                href="/wishlist/friends"
-                className="text-sm text-zinc-400 hover:text-white transition-colors"
-              >
-                Friends
-              </Link>
-              <Link
-                href="/wishlist/browse"
-                className="text-sm text-zinc-400 hover:text-white transition-colors"
-              >
-                Browse
-              </Link>
-              <AuthButton />
-            </div>
-          </div>
-        </div>
-      </nav>
+    <div className="min-h-screen bg-base-100">
+      <Navbar />
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-base-100">
         {/* User Profile Header */}
-        <div className="bg-gradient-to-br from-zinc-800/50 to-zinc-900/50 rounded-2xl p-8 mb-8 border border-zinc-700/50 backdrop-blur-sm">
+        <div className="bg-base-200 rounded-2xl p-8 mb-8 border border-base-300">
           <div className="flex items-start justify-between mb-6">
             <div className="flex items-center gap-6">
               {isEditing ? (
@@ -259,10 +227,10 @@ export default function ProfilePage() {
                     <img
                       src={user.image}
                       alt={user.name || ""}
-                      className="w-32 h-32 rounded-full object-cover border-4 border-zinc-600"
+                      className="w-32 h-32 rounded-full object-cover border-4 border-base-300"
                     />
                   ) : (
-                    <div className="w-32 h-32 rounded-full bg-zinc-700 flex items-center justify-center text-zinc-400 text-4xl font-bold">
+                    <div className="w-32 h-32 rounded-full bg-base-300 flex items-center justify-center text-base-content/70 text-4xl font-bold">
                       {user.name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || "?"}
                     </div>
                   )}
@@ -275,7 +243,7 @@ export default function ProfilePage() {
                   />
                   <label
                     htmlFor="avatar-upload"
-                    className="absolute bottom-0 right-0 w-10 h-10 rounded-full bg-blue-600 hover:bg-blue-700 flex items-center justify-center cursor-pointer border-2 border-zinc-900 transition-colors"
+                    className="absolute bottom-0 right-0 w-10 h-10 rounded-full bg-primary hover:opacity-90 flex items-center justify-center cursor-pointer border-2 border-base-100 transition-colors"
                     title="Change profile picture"
                   >
                     📷
@@ -298,23 +266,23 @@ export default function ProfilePage() {
                 {isEditing ? (
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium mb-2 text-zinc-300">Username</label>
+                      <label className="block text-sm font-medium mb-2 text-base-content">Username</label>
                       <input
                         type="text"
                         value={editForm.username}
                         onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
                         placeholder="your-username"
-                        className="w-full px-4 py-2 rounded-xl bg-zinc-900/80 border border-zinc-700/50 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
+                        className="w-full px-4 py-2 rounded-xl bg-base-100 border border-base-300 text-base-content placeholder-base-content/50 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-2 text-zinc-300">Bio</label>
+                      <label className="block text-sm font-medium mb-2 text-base-content">Bio</label>
                       <textarea
                         value={editForm.bio}
                         onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })}
                         placeholder="Tell us about yourself..."
                         rows={3}
-                        className="w-full px-4 py-2 rounded-xl bg-zinc-900/80 border border-zinc-700/50 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 resize-none transition-all"
+                        className="w-full px-4 py-2 rounded-xl bg-base-100 border border-base-300 text-base-content placeholder-base-content/50 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 resize-none transition-all"
                       />
                     </div>
                   </div>
@@ -322,14 +290,14 @@ export default function ProfilePage() {
                   <>
                     <h1 className="text-4xl font-bold mb-2">{user.name || user.email}</h1>
                     {user.username ? (
-                      <p className="text-zinc-400 text-lg mb-4">@{user.username}</p>
+                      <p className="text-base-content/70 text-lg mb-4">@{user.username}</p>
                     ) : (
-                      <p className="text-zinc-500 text-sm mb-4">No username set</p>
+                      <p className="text-base-content/50 text-sm mb-4">No username set</p>
                     )}
                     {user.bio ? (
-                      <p className="text-zinc-300 text-lg leading-relaxed">{user.bio}</p>
+                      <p className="text-base-content/80 text-lg leading-relaxed">{user.bio}</p>
                     ) : (
-                      <p className="text-zinc-500 italic">No bio yet</p>
+                      <p className="text-base-content/50 italic">No bio yet</p>
                     )}
                   </>
                 )}
@@ -356,7 +324,7 @@ export default function ProfilePage() {
                           shippingAddress: user.shippingAddress || "",
                         });
                       }}
-                      className="px-6 py-3 rounded-xl bg-zinc-700/80 hover:bg-zinc-600/80 text-white font-medium transition-all border border-zinc-600/50"
+                      className="px-6 py-3 rounded-xl bg-base-300 hover:opacity-90 text-base-content font-medium transition-all border border-base-300"
                     >
                       Cancel
                     </button>
@@ -379,21 +347,21 @@ export default function ProfilePage() {
               <div className="text-3xl font-bold text-white">
                 {wishlists.filter((w: Wishlist) => w.privacy === 'public').length}
               </div>
-              <div className="text-sm text-zinc-400 mt-1">Public Wishlist{wishlists.filter((w: Wishlist) => w.privacy === 'public').length !== 1 ? 's' : ''}</div>
+              <div className="text-sm text-base-content/70 mt-1">Public Wishlist{wishlists.filter((w: Wishlist) => w.privacy === 'public').length !== 1 ? 's' : ''}</div>
             </div>
             {isOwnProfile && (
               <>
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-white">
+                  <div className="text-3xl font-bold text-base-content">
                     {wishlists.filter((w: Wishlist) => w.privacy === 'private').length}
                   </div>
-                  <div className="text-sm text-zinc-400 mt-1">Private Wishlist{wishlists.filter((w: Wishlist) => w.privacy === 'private').length !== 1 ? 's' : ''}</div>
+                  <div className="text-sm text-base-content/70 mt-1">Private Wishlist{wishlists.filter((w: Wishlist) => w.privacy === 'private').length !== 1 ? 's' : ''}</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-white">
+                  <div className="text-3xl font-bold text-base-content">
                     {wishlists.filter((w: Wishlist) => w.privacy === 'personal').length}
                   </div>
-                  <div className="text-sm text-zinc-400 mt-1">Personal Wishlist{wishlists.filter((w: Wishlist) => w.privacy === 'personal').length !== 1 ? 's' : ''}</div>
+                  <div className="text-sm text-base-content/70 mt-1">Personal Wishlist{wishlists.filter((w: Wishlist) => w.privacy === 'personal').length !== 1 ? 's' : ''}</div>
                 </div>
               </>
             )}
@@ -402,15 +370,15 @@ export default function ProfilePage() {
 
         {/* Connected Accounts - Only show when editing own profile */}
         {isOwnProfile && (
-          <div className="mb-8 p-6 rounded-2xl bg-gradient-to-br from-zinc-800/50 to-zinc-900/50 border border-zinc-700/50 backdrop-blur-sm">
+          <div className="mb-8 p-6 rounded-2xl bg-base-200 border border-base-300">
             <h2 className="text-xl font-semibold mb-4">Connected Accounts</h2>
-            <p className="text-sm text-zinc-400 mb-4">
+            <p className="text-sm text-base-content/70 mb-4">
               Link your accounts to sign in with different providers
             </p>
             
             <div className="space-y-3">
               {/* Google */}
-              <div className="flex items-center justify-between p-4 rounded-xl bg-zinc-900/80 border border-zinc-700/50">
+              <div className="flex items-center justify-between p-4 rounded-xl bg-base-200 border border-base-300">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center">
                     <svg className="w-6 h-6" viewBox="0 0 24 24">
@@ -421,8 +389,8 @@ export default function ProfilePage() {
                     </svg>
                   </div>
                   <div className="flex-1">
-                    <p className="font-medium text-white">Google</p>
-                    <p className="text-xs text-zinc-400">
+                    <p className="font-medium text-base-content">Google</p>
+                    <p className="text-xs text-base-content/70">
                       {isAccountConnected("google") ? "Connected" : "Not connected"}
                     </p>
                     {!availableProviders.google && (
@@ -450,7 +418,7 @@ export default function ProfilePage() {
               </div>
 
               {/* Twitch */}
-              <div className="flex items-center justify-between p-4 rounded-xl bg-zinc-900/80 border border-zinc-700/50">
+              <div className="flex items-center justify-between p-4 rounded-xl bg-base-200 border border-base-300">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-lg bg-[#9146FF] flex items-center justify-center">
                     <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
@@ -458,8 +426,8 @@ export default function ProfilePage() {
                     </svg>
                   </div>
                   <div className="flex-1">
-                    <p className="font-medium text-white">Twitch</p>
-                    <p className="text-xs text-zinc-400">
+                    <p className="font-medium text-base-content">Twitch</p>
+                    <p className="text-xs text-base-content/70">
                       {isAccountConnected("twitch") ? "Connected" : availableProviders.twitch ? "Not connected" : "Not configured"}
                     </p>
                     {!availableProviders.twitch && (
@@ -487,7 +455,7 @@ export default function ProfilePage() {
               </div>
 
               {/* Steam */}
-              <div className="flex items-center justify-between p-4 rounded-xl bg-zinc-900/80 border border-zinc-700/50">
+              <div className="flex items-center justify-between p-4 rounded-xl bg-base-200 border border-base-300">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-lg bg-[#171a21] border border-zinc-700 flex items-center justify-center">
                     <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
@@ -496,8 +464,8 @@ export default function ProfilePage() {
                     </svg>
                   </div>
                   <div className="flex-1">
-                    <p className="font-medium text-white">Steam</p>
-                    <p className="text-xs text-zinc-400">
+                    <p className="font-medium text-base-content">Steam</p>
+                    <p className="text-xs text-base-content/70">
                       {isAccountConnected("steam") ? "Connected" : availableProviders.steam ? "Not connected" : "Not configured"}
                     </p>
                     {!availableProviders.steam && (
@@ -529,32 +497,32 @@ export default function ProfilePage() {
 
         {/* Additional Settings - Only when editing own profile */}
         {isOwnProfile && isEditing && (
-          <div className="mb-8 p-6 rounded-2xl bg-gradient-to-br from-zinc-800/50 to-zinc-900/50 border border-zinc-700/50 backdrop-blur-sm">
+          <div className="mb-8 p-6 rounded-2xl bg-base-200 border border-base-300">
             <h2 className="text-xl font-semibold mb-4">Additional Settings</h2>
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2 text-zinc-300">Amazon Affiliate Tag</label>
+                <label className="block text-sm font-medium mb-2 text-base-content">Amazon Affiliate Tag</label>
                 <input
                   type="text"
                   value={editForm.amazonAffiliateTag}
                   onChange={(e) => setEditForm({ ...editForm, amazonAffiliateTag: e.target.value })}
                   placeholder="your-tag-20"
-                  className="w-full px-4 py-2 rounded-xl bg-zinc-900/80 border border-zinc-700/50 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
+                  className="w-full px-4 py-2 rounded-xl bg-base-100 border border-base-300 text-base-content placeholder-base-content/50 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
                 />
-                <p className="text-xs text-zinc-500 mt-1">
+                <p className="text-xs text-base-content/50 mt-1">
                   Your Amazon Associates affiliate tag (e.g., "beavertr-20")
                 </p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2 text-zinc-300">Shipping Address</label>
+                <label className="block text-sm font-medium mb-2 text-base-content">Shipping Address</label>
                 <textarea
                   value={editForm.shippingAddress}
                   onChange={(e) => setEditForm({ ...editForm, shippingAddress: e.target.value })}
                   placeholder="Your shipping address (optional)"
                   rows={4}
-                  className="w-full px-4 py-2 rounded-xl bg-zinc-900/80 border border-zinc-700/50 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 resize-none transition-all"
+                  className="w-full px-4 py-2 rounded-xl bg-base-100 border border-base-300 text-base-content placeholder-base-content/50 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 resize-none transition-all"
                 />
                 <div className="mt-2 p-3 rounded-lg bg-yellow-900/20 border border-yellow-800/50">
                   <p className="text-xs text-yellow-200">
@@ -579,7 +547,7 @@ export default function ProfilePage() {
                     <Link
                       key={wishlist.id}
                       href={user.username ? `/wishlist/user/${user.username}` : `/wishlist/user/${user.id}`}
-                      className="bg-zinc-800/50 rounded-lg p-6 border border-zinc-700 hover:border-zinc-600 transition-all hover:bg-zinc-800"
+                      className="bg-base-200 rounded-lg p-6 border border-base-300 hover:border-base-content/30 transition-all hover:bg-base-300"
                     >
                       <div className="flex items-center gap-3 mb-2">
                         {wishlist.icon && wishlist.color && (
@@ -606,7 +574,7 @@ export default function ProfilePage() {
               <h2 className="text-2xl font-bold mb-4">
                 Private Wishlists
                 {!isOwnProfile && (
-                  <span className="text-sm text-zinc-400 font-normal ml-2">(Friends Only)</span>
+                  <span className="text-sm text-base-content/70 font-normal ml-2">(Friends Only)</span>
                 )}
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -616,7 +584,7 @@ export default function ProfilePage() {
                     <Link
                       key={wishlist.id}
                       href={user.username ? `/wishlist/user/${user.username}` : `/wishlist/user/${user.id}`}
-                      className="bg-zinc-800/50 rounded-lg p-6 border border-zinc-700 hover:border-zinc-600 transition-all hover:bg-zinc-800"
+                      className="bg-base-200 rounded-lg p-6 border border-base-300 hover:border-base-content/30 transition-all hover:bg-base-300"
                     >
                       <div className="flex items-center gap-3 mb-2">
                         {wishlist.icon && wishlist.color && (
@@ -648,7 +616,7 @@ export default function ProfilePage() {
                     <Link
                       key={wishlist.id}
                       href={user.username ? `/wishlist/user/${user.username}` : `/wishlist/user/${user.id}`}
-                      className="bg-zinc-800/50 rounded-lg p-6 border border-zinc-700 hover:border-zinc-600 transition-all hover:bg-zinc-800"
+                      className="bg-base-200 rounded-lg p-6 border border-base-300 hover:border-base-content/30 transition-all hover:bg-base-300"
                     >
                       <div className="flex items-center gap-3 mb-2">
                         {wishlist.icon && wishlist.color && (
@@ -671,8 +639,8 @@ export default function ProfilePage() {
 
           {/* No Wishlists Message */}
           {wishlists.length === 0 && (
-            <div className="bg-zinc-800/50 rounded-lg p-12 border border-zinc-700 text-center">
-              <p className="text-zinc-400 mb-4">
+            <div className="bg-base-200 rounded-lg p-12 border border-base-300 text-center">
+              <p className="text-base-content/70 mb-4">
                 {isOwnProfile 
                   ? "You don't have any wishlists yet." 
                   : "This user doesn't have any wishlists visible to you."}
@@ -680,7 +648,7 @@ export default function ProfilePage() {
               {isOwnProfile && (
                 <Link 
                   href="/wishlist" 
-                  className="text-white hover:underline font-medium"
+                  className="text-base-content hover:underline font-medium"
                 >
                   Create a wishlist →
                 </Link>
@@ -691,12 +659,12 @@ export default function ProfilePage() {
 
         {/* Account Information - Only for own profile */}
         {isOwnProfile && !isEditing && (
-          <div className="bg-zinc-800/50 rounded-lg p-6 border border-zinc-700">
-            <h3 className="text-lg font-semibold mb-4">Account Information</h3>
+          <div className="bg-base-200 rounded-lg p-6 border border-base-300">
+            <h3 className="text-lg font-semibold mb-4 text-base-content">Account Information</h3>
             <div className="space-y-3 text-sm">
               <div className="flex justify-between">
-                <span className="text-zinc-400">Email:</span>
-                <span className="text-white">{user.email || "Not set"}</span>
+                <span className="text-base-content/70">Email:</span>
+                <span className="text-base-content">{user.email || "Not set"}</span>
               </div>
             </div>
           </div>
@@ -708,72 +676,38 @@ export default function ProfilePage() {
         <ImageCropper
           image={imageToCrop}
           originalFile={fileToCrop || undefined}
-          uploading={uploadingAvatar}
           onCropComplete={async (croppedImageUrl, mimeType) => {
-            setUploadingAvatar(true);
             try {
-              console.log('onCropComplete called with URL:', croppedImageUrl.substring(0, 50) + '...', 'mimeType:', mimeType);
-              
-              // Handle blob URLs and data URLs
-              let blob: Blob;
-              if (croppedImageUrl.startsWith('blob:')) {
-                console.log('Fetching blob URL...');
-                const response = await fetch(croppedImageUrl);
-                if (!response.ok) {
-                  throw new Error(`Failed to fetch blob: ${response.status} ${response.statusText}`);
-                }
-                blob = await response.blob();
-                console.log('Blob fetched, size:', blob.size, 'type:', blob.type);
-              } else if (croppedImageUrl.startsWith('data:')) {
-                console.log('Converting data URL to blob...');
-                const response = await fetch(croppedImageUrl);
-                blob = await response.blob();
-                console.log('Data URL converted, size:', blob.size, 'type:', blob.type);
-              } else {
-                throw new Error('Invalid image URL format');
-              }
+              const response = await fetch(croppedImageUrl);
+              const blob = await response.blob();
               
               let extension = 'jpg';
               if (mimeType === 'image/gif') extension = 'gif';
               else if (mimeType === 'image/png') extension = 'png';
               else if (mimeType === 'image/webp') extension = 'webp';
               
-              console.log('Creating FormData with extension:', extension);
               const formData = new FormData();
               formData.append("file", blob, `cropped-avatar.${extension}`);
 
-              console.log('Uploading to /api/user/upload-avatar...');
               const uploadResponse = await fetch("/api/user/upload-avatar", {
                 method: "POST",
                 body: formData,
               });
 
-              console.log('Upload response status:', uploadResponse.status);
-
               if (uploadResponse.ok) {
                 const data = await uploadResponse.json();
-                console.log('Upload successful, image URL:', data.imageUrl);
                 setUser({ ...user!, image: data.imageUrl });
                 setShowCropper(false);
                 setImageToCrop(null);
                 setFileToCrop(null);
                 alert("Profile picture updated!");
               } else {
-                const errorText = await uploadResponse.text();
-                console.error('Upload failed:', errorText);
-                let error;
-                try {
-                  error = JSON.parse(errorText);
-                } catch {
-                  error = { error: errorText || "Failed to upload image" };
-                }
+                const error = await uploadResponse.json();
                 alert(error.error || "Failed to upload image");
               }
-            } catch (error: any) {
+            } catch (error) {
               console.error("Error uploading cropped image:", error);
-              alert(`Error uploading image: ${error.message || 'Unknown error'}`);
-            } finally {
-              setUploadingAvatar(false);
+              alert("Error uploading image");
             }
           }}
           onCancel={() => {

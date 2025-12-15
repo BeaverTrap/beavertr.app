@@ -3,9 +3,9 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
+import Navbar from "@/components/Navbar";
 import WishlistForm from "@/components/WishlistForm";
 import WishlistList from "@/components/WishlistList";
-import WishlistAnalytics from "@/components/WishlistAnalytics";
 import AuthButton from "@/components/AuthButton";
 import WishlistInstructions from "@/components/WishlistInstructions";
 import CreateWishlistModal from "@/components/CreateWishlistModal";
@@ -30,7 +30,6 @@ export default function WishlistDashboard() {
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingIconWishlistId, setEditingIconWishlistId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"items" | "analytics">("items");
 
   useEffect(() => {
     fetchWishlists();
@@ -44,7 +43,7 @@ export default function WishlistDashboard() {
         setWishlists(data);
         // Only set default if no active wishlist is selected
         if (data.length > 0 && !activeWishlistId) {
-          const defaultWishlist = data.find((w: Wishlist) => w.isDefault === true || (w.isDefault as any) === 1) || data[0];
+          const defaultWishlist = data.find((w: Wishlist) => w.isDefault === true || w.isDefault === 1) || data[0];
           setActiveWishlistId(defaultWishlist.id);
         }
       }
@@ -81,41 +80,16 @@ export default function WishlistDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-black to-zinc-900 text-white flex items-center justify-center">
-        <div className="text-zinc-400">Loading...</div>
+      <div className="min-h-screen bg-base-100 flex items-center justify-center">
+        <Navbar />
+        <div className="text-base-content/70">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-black to-zinc-900 text-white">
-      <nav className="border-b border-zinc-800/50 backdrop-blur-sm bg-zinc-900/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link
-              href="/"
-              className="text-xl font-bold bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent"
-            >
-              beavertr.app
-            </Link>
-            <div className="flex items-center gap-6">
-              <Link
-                href="/wishlist/friends"
-                className="text-sm text-zinc-400 hover:text-white transition-colors"
-              >
-                Friends
-              </Link>
-              <Link
-                href="/wishlist/browse"
-                className="text-sm text-zinc-400 hover:text-white transition-colors"
-              >
-                Browse
-              </Link>
-              <AuthButton />
-            </div>
-          </div>
-        </div>
-      </nav>
+    <div className="min-h-screen bg-base-100">
+      <Navbar />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Wishlist Selector */}
@@ -127,8 +101,8 @@ export default function WishlistDashboard() {
               onClick={() => setActiveWishlistId(wishlist.id)}
               className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${
                 activeWishlistId === wishlist.id
-                  ? "bg-white text-black"
-                  : "bg-zinc-800 text-white hover:bg-zinc-700"
+                  ? "bg-base-content text-base-100"
+                  : "bg-base-200 text-base-content hover:bg-base-300"
               }`}
             >
               <WishlistIcon icon={wishlist.icon} color={wishlist.color} size={20} />
@@ -137,7 +111,7 @@ export default function WishlistDashboard() {
           ))}
           <button
             onClick={() => setShowCreateModal(true)}
-            className="px-4 py-2 rounded-lg bg-zinc-800 text-white hover:bg-zinc-700 transition-colors"
+            className="px-4 py-2 rounded-lg bg-base-200 text-base-content hover:bg-base-300 transition-colors"
           >
             + New List
           </button>
@@ -147,7 +121,7 @@ export default function WishlistDashboard() {
         {activeWishlistId ? (
           <WishlistContent wishlistId={activeWishlistId} wishlists={wishlists} />
         ) : (
-          <div className="text-center py-16 text-zinc-400">
+          <div className="text-center py-16 text-base-content/70">
             <p>Select or create a wishlist to get started</p>
           </div>
         )}
@@ -167,7 +141,6 @@ function WishlistContent({ wishlistId, wishlists }: { wishlistId: string; wishli
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showIconPicker, setShowIconPicker] = useState(false);
-  const [activeTab, setActiveTab] = useState<"items" | "analytics">("items");
   const { data: session } = useSession();
   
   const wishlist = wishlists.find(w => w.id === wishlistId);
@@ -294,7 +267,7 @@ function WishlistContent({ wishlistId, wishlists }: { wishlistId: string; wishli
         <div className="flex-1">
           <h2 className="text-2xl font-bold">{wishlist?.name}</h2>
           {wishlist?.description && (
-            <p className="text-zinc-400 text-sm mt-1">{wishlist.description}</p>
+            <p className="text-base-content/70 text-sm mt-1">{wishlist.description}</p>
           )}
         </div>
       </div>
@@ -315,38 +288,13 @@ function WishlistContent({ wishlistId, wishlists }: { wishlistId: string; wishli
         />
       )}
 
-      {/* Share Link and Export Section */}
-      <div className="mb-6 p-6 rounded-2xl bg-gradient-to-br from-zinc-800/50 to-zinc-900/50 border border-zinc-700/50 backdrop-blur-sm">
-        <div className="space-y-5">
-          {/* Export Buttons */}
-          {session?.user?.id && wishlist && (
+      {/* Share Link Section - Hidden for personal wishlists */}
+      {shareUrl && wishlist?.privacy !== "personal" && (
+        <div className="mb-6 p-6 rounded-2xl bg-base-200 border border-base-300">
+          <div className="space-y-5">
+            {/* Share Link */}
             <div>
-              <label className="block text-sm font-semibold text-zinc-300 mb-2">
-                Export Wishlist
-              </label>
-              <div className="flex gap-3">
-                <a
-                  href={`/api/wishlist/export?wishlistId=${wishlistId}&format=csv`}
-                  download
-                  className="px-4 py-2 rounded-xl bg-green-600/80 hover:bg-green-600 text-white transition-colors"
-                >
-                  📥 Export CSV
-                </a>
-                <a
-                  href={`/api/wishlist/export?wishlistId=${wishlistId}&format=json`}
-                  download
-                  className="px-4 py-2 rounded-xl bg-blue-600/80 hover:bg-blue-600 text-white transition-colors"
-                >
-                  📥 Export JSON
-                </a>
-              </div>
-            </div>
-          )}
-
-          {/* Share Link - Hidden for personal wishlists */}
-          {shareUrl && wishlist?.privacy !== "personal" && (
-            <div>
-              <label className="block text-sm font-semibold text-zinc-300 mb-2">
+              <label className="block text-sm font-semibold text-base-content mb-2">
                 Share Link
               </label>
               <div className="flex items-center gap-3">
@@ -355,11 +303,11 @@ function WishlistContent({ wishlistId, wishlists }: { wishlistId: string; wishli
                     type="text"
                     value={shareUrl}
                     readOnly
-                    className="w-full px-4 py-3 pr-24 rounded-xl bg-zinc-900/80 border border-zinc-700/50 text-white text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all backdrop-blur-sm"
+                    className="w-full px-4 py-3 pr-24 rounded-xl bg-base-100 border border-base-300 text-base-content text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
                   />
                   <button
                     onClick={handleCopyLink}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-1.5 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-sm font-semibold transition-all shadow-md hover:shadow-lg transform hover:scale-[1.02] active:scale-[0.98]"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-1.5 rounded-lg bg-primary hover:opacity-90 text-primary-content text-sm font-semibold transition-all shadow-md hover:shadow-lg transform hover:scale-[1.02] active:scale-[0.98]"
                   >
                     📋 Copy
                   </button>
@@ -378,20 +326,19 @@ function WishlistContent({ wishlistId, wishlists }: { wishlistId: string; wishli
                 </div>
               )}
             </div>
-          )}
             
-          {/* Actions */}
-          <div className="flex items-center justify-between pt-4 border-t border-zinc-700/50">
+            {/* Actions */}
+            <div className="flex items-center justify-between pt-4 border-t border-base-300">
               <div className="flex gap-3">
                 <button
                   onClick={handleRename}
-                  className="px-4 py-2 rounded-xl bg-zinc-700/80 hover:bg-zinc-600/80 text-white font-medium transition-all border border-zinc-600/50 shadow-sm hover:shadow-md transform hover:scale-[1.02] active:scale-[0.98]"
+                  className="px-4 py-2 rounded-xl bg-base-300 hover:opacity-90 text-base-content font-medium transition-all border border-base-300 shadow-sm hover:shadow-md transform hover:scale-[1.02] active:scale-[0.98]"
                 >
                   ✏️ Rename
                 </button>
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-medium transition-all shadow-md hover:shadow-lg transform hover:scale-[1.02] active:scale-[0.98]"
+                  className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-medium transition-all shadow-md hover:shadow-lg transform hover:scale-[1.02] active:scale-[0.98]"
                 >
                   🗑️ Delete List
                 </button>
@@ -406,10 +353,10 @@ function WishlistContent({ wishlistId, wishlists }: { wishlistId: string; wishli
                     value="public"
                     checked={wishlist?.privacy === "public"}
                     onChange={(e) => handlePrivacyChange(e.target.value)}
-                    className="w-4 h-4 text-blue-600 bg-zinc-900 border-zinc-700 focus:ring-blue-500 focus:ring-2"
+                    className="w-4 h-4 text-primary bg-base-100 border-base-300 focus:ring-primary focus:ring-2"
                   />
-                  <span className="text-sm font-medium text-zinc-300">Public</span>
-                  <div className="absolute right-0 top-full mt-2 w-56 p-3 bg-zinc-900/95 border border-zinc-700 rounded-lg text-xs text-zinc-300 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 pointer-events-none shadow-xl backdrop-blur-sm">
+                  <span className="text-sm font-medium text-base-content">Public</span>
+                  <div className="absolute right-0 top-full mt-2 w-56 p-3 bg-base-200 border border-base-300 rounded-lg text-xs text-base-content opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 pointer-events-none shadow-xl">
                     Open to everyone - anyone can view
                   </div>
                 </label>
@@ -420,10 +367,10 @@ function WishlistContent({ wishlistId, wishlists }: { wishlistId: string; wishli
                     value="private"
                     checked={wishlist?.privacy === "private"}
                     onChange={(e) => handlePrivacyChange(e.target.value)}
-                    className="w-4 h-4 text-blue-600 bg-zinc-900 border-zinc-700 focus:ring-blue-500 focus:ring-2"
+                    className="w-4 h-4 text-primary bg-base-100 border-base-300 focus:ring-primary focus:ring-2"
                   />
-                  <span className="text-sm font-medium text-zinc-300">Private</span>
-                  <div className="absolute right-0 top-full mt-2 w-56 p-3 bg-zinc-900/95 border border-zinc-700 rounded-lg text-xs text-zinc-300 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 pointer-events-none shadow-xl backdrop-blur-sm">
+                  <span className="text-sm font-medium text-base-content">Private</span>
+                  <div className="absolute right-0 top-full mt-2 w-56 p-3 bg-base-200 border border-base-300 rounded-lg text-xs text-base-content opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 pointer-events-none shadow-xl">
                     Only logged-in users with share link can view
                   </div>
                 </label>
@@ -434,10 +381,10 @@ function WishlistContent({ wishlistId, wishlists }: { wishlistId: string; wishli
                     value="personal"
                     checked={wishlist?.privacy === "personal"}
                     onChange={(e) => handlePrivacyChange(e.target.value)}
-                    className="w-4 h-4 text-blue-600 bg-zinc-900 border-zinc-700 focus:ring-blue-500 focus:ring-2"
+                    className="w-4 h-4 text-primary bg-base-100 border-base-300 focus:ring-primary focus:ring-2"
                   />
-                  <span className="text-sm font-medium text-zinc-300">Personal</span>
-                  <div className="absolute right-0 top-full mt-2 w-56 p-3 bg-zinc-900/95 border border-zinc-700 rounded-lg text-xs text-zinc-300 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 pointer-events-none shadow-xl backdrop-blur-sm">
+                  <span className="text-sm font-medium text-base-content">Personal</span>
+                  <div className="absolute right-0 top-full mt-2 w-56 p-3 bg-base-200 border border-base-300 rounded-lg text-xs text-base-content opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 pointer-events-none shadow-xl">
                     Only you (the creator) can view this list
                   </div>
                 </label>
@@ -445,20 +392,21 @@ function WishlistContent({ wishlistId, wishlists }: { wishlistId: string; wishli
             </div>
           </div>
         </div>
+      )}
       
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-zinc-800 rounded-lg p-6 max-w-md w-full mx-4 border border-zinc-700">
-            <h3 className="text-xl font-bold mb-4">Delete Wishlist</h3>
-            <p className="text-zinc-400 mb-6">
+          <div className="bg-base-100 rounded-lg p-6 max-w-md w-full mx-4 border border-base-300">
+            <h3 className="text-xl font-bold mb-4 text-base-content">Delete Wishlist</h3>
+            <p className="text-base-content/70 mb-6">
               Are you sure you want to delete this wishlist? This action cannot be undone. 
               All items in this wishlist will be permanently deleted.
             </p>
             <div className="flex gap-4">
               <button
                 onClick={() => setShowDeleteConfirm(false)}
-                className="flex-1 px-4 py-2 rounded-lg bg-zinc-700 hover:bg-zinc-600 text-white transition-colors"
+                className="flex-1 px-4 py-2 rounded-lg bg-base-200 hover:bg-base-300 text-base-content transition-colors"
                 disabled={deleting}
               >
                 Cancel
@@ -475,40 +423,10 @@ function WishlistContent({ wishlistId, wishlists }: { wishlistId: string; wishli
         </div>
       )}
       
-      {/* Tabs */}
-      <div className="mb-6 flex gap-2 border-b border-zinc-700/50">
-        <button
-          onClick={() => setActiveTab("items")}
-          className={`px-4 py-2 font-medium transition-colors ${
-            activeTab === "items"
-              ? "text-white border-b-2 border-blue-500"
-              : "text-zinc-400 hover:text-white"
-          }`}
-        >
-          Items
-        </button>
-        <button
-          onClick={() => setActiveTab("analytics")}
-          className={`px-4 py-2 font-medium transition-colors ${
-            activeTab === "analytics"
-              ? "text-white border-b-2 border-blue-500"
-              : "text-zinc-400 hover:text-white"
-          }`}
-        >
-          Analytics
-        </button>
+      <WishlistForm wishlistId={wishlistId} onItemAdded={() => setRefreshKey(k => k + 1)} />
+      <div className="mt-8">
+        <WishlistList key={refreshKey} wishlistId={wishlistId} isOwner={true} />
       </div>
-
-      {activeTab === "items" ? (
-        <>
-          <WishlistForm wishlistId={wishlistId} onItemAdded={() => setRefreshKey(k => k + 1)} />
-          <div className="mt-8">
-            <WishlistList key={refreshKey} wishlistId={wishlistId} isOwner={true} />
-          </div>
-        </>
-      ) : (
-        <WishlistAnalytics wishlistId={wishlistId} />
-      )}
       
       <WishlistInstructions />
     </div>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
+import Navbar from "@/components/Navbar";
 import AuthButton from "@/components/AuthButton";
 
 interface Friend {
@@ -77,76 +78,40 @@ export default function FriendsPage() {
 
   if (status === "loading" || loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-black to-zinc-900 text-white flex items-center justify-center">
-        <div className="text-zinc-400">Loading...</div>
+      <div className="min-h-screen bg-base-100 flex items-center justify-center">
+        <Navbar />
+        <div className="text-base-content/70">Loading...</div>
       </div>
     );
   }
 
   if (!session) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-black to-zinc-900 text-white">
-        <nav className="border-b border-zinc-800/50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
-              <Link
-                href="/"
-                className="text-xl font-bold bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent"
-              >
-                beavertr.app
-              </Link>
-            </div>
-          </div>
-        </nav>
+      <div className="min-h-screen bg-base-100">
+        <Navbar />
         <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
-          <p className="text-zinc-400">Please sign in to view friends</p>
+          <p className="text-base-content/70">Please sign in to view friends</p>
         </main>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-black to-zinc-900 text-white">
-      <nav className="border-b border-zinc-800/50 backdrop-blur-sm bg-zinc-900/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link
-              href="/"
-              className="text-xl font-bold bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent"
-            >
-              beavertr.app
-            </Link>
-            <div className="flex items-center gap-6">
-              <Link
-                href="/wishlist"
-                className="text-sm text-zinc-400 hover:text-white transition-colors"
-              >
-                My Wishlists
-              </Link>
-              <Link
-                href="/wishlist/browse"
-                className="text-sm text-zinc-400 hover:text-white transition-colors"
-              >
-                Browse
-              </Link>
-              <AuthButton />
-            </div>
-          </div>
-        </div>
-      </nav>
+    <div className="min-h-screen bg-base-100">
+      <Navbar />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-4xl font-bold mb-8">Friends</h1>
+        <h1 className="text-4xl font-bold mb-8 text-base-content">Friends</h1>
 
         {/* Pending Requests */}
         {pendingRequests.length > 0 && (
           <div className="mb-12">
-            <h2 className="text-2xl font-semibold mb-4">Pending Requests</h2>
+            <h2 className="text-2xl font-semibold mb-4 text-base-content">Pending Requests</h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {pendingRequests.map((request) => (
                 <div
                   key={request.friendship.id}
-                  className="p-6 rounded-xl bg-zinc-800/50 border border-zinc-700/50"
+                  className="p-6 rounded-xl bg-base-200 border border-base-300"
                 >
                   <div className="flex items-center gap-4 mb-4">
                     {request.user.image && (
@@ -157,15 +122,15 @@ export default function FriendsPage() {
                       />
                     )}
                     <div>
-                      <h3 className="font-semibold">{request.user.name || request.user.email}</h3>
-                      <p className="text-sm text-zinc-400 capitalize">
+                      <h3 className="font-semibold text-base-content">{request.user.name || request.user.email}</h3>
+                      <p className="text-sm text-base-content/70 capitalize">
                         {request.friendship.relationshipType}
                       </p>
                     </div>
                   </div>
                   <button
                     onClick={() => handleAcceptRequest(request.friendship.id)}
-                    className="w-full px-4 py-2 rounded-lg bg-white text-black font-medium hover:bg-zinc-100 transition-colors"
+                    className="w-full px-4 py-2 rounded-lg bg-base-content text-base-100 font-medium hover:opacity-90 transition-colors"
                   >
                     Accept
                   </button>
@@ -177,16 +142,16 @@ export default function FriendsPage() {
 
         {/* Friends List */}
         <div>
-          <h2 className="text-2xl font-semibold mb-4">My Friends</h2>
+          <h2 className="text-2xl font-semibold mb-4 text-base-content">My Friends</h2>
           {friends.length === 0 ? (
-            <p className="text-zinc-400">No friends yet. Start connecting!</p>
+            <p className="text-base-content/70">No friends yet. Start connecting!</p>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {friends.map((friend) => (
                 <Link
                   key={friend.friendship.id}
                   href={`/wishlist/user/${friend.user.username || friend.user.id}`}
-                  className="p-6 rounded-xl bg-zinc-800/50 border border-zinc-700/50 hover:bg-zinc-800 transition-colors"
+                  className="p-6 rounded-xl bg-base-200 border border-base-300 hover:bg-base-300 transition-colors"
                 >
                   <div className="flex items-center gap-4">
                     {friend.user.image && (
@@ -197,8 +162,8 @@ export default function FriendsPage() {
                       />
                     )}
                     <div>
-                      <h3 className="font-semibold">{friend.user.name || friend.user.email}</h3>
-                      <p className="text-sm text-zinc-400 capitalize">
+                      <h3 className="font-semibold text-base-content">{friend.user.name || friend.user.email}</h3>
+                      <p className="text-sm text-base-content/70 capitalize">
                         {friend.friendship.relationshipType}
                       </p>
                     </div>

@@ -9,14 +9,14 @@ export async function GET() {
   
   // Get all users who have public wishlists
   // Make sure we're checking for 'public' string value
-  const publicWishlists = await (db as any)
+  const publicWishlists = await db
     .select({ userId: wishlists.userId })
     .from(wishlists)
     .where(eq(wishlists.privacy, 'public'));
   
   console.log("Public wishlists found:", publicWishlists.length);
   
-  const userIds = [...new Set(publicWishlists.map((w: any) => w.userId))];
+  const userIds = [...new Set(publicWishlists.map(w => w.userId))];
   
   if (userIds.length === 0) {
     console.log("No users with public wishlists");
@@ -34,7 +34,7 @@ export async function GET() {
   }
   
   // Get user details
-  const publicUsers = await (db as any)
+  const publicUsers = await db
     .select({
       id: users.id,
       name: users.name,
@@ -43,7 +43,7 @@ export async function GET() {
       username: users.username,
     })
     .from(users)
-    .where(inArray(users.id, filteredUserIds as string[]));
+    .where(inArray(users.id, filteredUserIds));
   
   console.log("Public users:", publicUsers.length);
   
