@@ -157,6 +157,68 @@ html[data-theme="light"] h6 {
   color: #000000 !important;
 }
 
+/* Light Theme: Force text-white to be black */
+html[data-theme="light"] .text-white,
+html[data-theme="light"] [class*="text-white"] {
+  color: #000000 !important;
+}
+
+html[data-theme="light"] .text-white\/50,
+html[data-theme="light"] [class*="text-white/50"] {
+  color: #4a4a4a !important;
+}
+
+html[data-theme="light"] .text-white\/70,
+html[data-theme="light"] [class*="text-white/70"] {
+  color: #1a1a1a !important;
+}
+
+/* Light Theme: Force zinc/gray colors to be dark */
+html[data-theme="light"] .text-zinc-300,
+html[data-theme="light"] .text-zinc-400,
+html[data-theme="light"] .text-zinc-500,
+html[data-theme="light"] .text-gray-300,
+html[data-theme="light"] .text-gray-400,
+html[data-theme="light"] .text-gray-500,
+html[data-theme="light"] .text-slate-300,
+html[data-theme="light"] .text-slate-400,
+html[data-theme="light"] .text-slate-500 {
+  color: #1a1a1a !important;
+}
+
+html[data-theme="light"] .text-zinc-200,
+html[data-theme="light"] .text-gray-200,
+html[data-theme="light"] .text-slate-200 {
+  color: #000000 !important;
+}
+
+/* Light Theme: Force prose-invert to use normal colors */
+html[data-theme="light"] .prose-invert {
+  color: #000000 !important;
+}
+
+html[data-theme="light"] .prose-invert p,
+html[data-theme="light"] .prose-invert h1,
+html[data-theme="light"] .prose-invert h2,
+html[data-theme="light"] .prose-invert h3,
+html[data-theme="light"] .prose-invert h4,
+html[data-theme="light"] .prose-invert h5,
+html[data-theme="light"] .prose-invert h6,
+html[data-theme="light"] .prose-invert strong,
+html[data-theme="light"] .prose-invert span,
+html[data-theme="light"] .prose-invert div {
+  color: #000000 !important;
+}
+
+/* Light Theme: Ensure links are readable */
+html[data-theme="light"] a {
+  color: #2563eb !important; /* Blue that's readable on white */
+}
+
+html[data-theme="light"] a:hover {
+  color: #1d4ed8 !important; /* Darker blue on hover */
+}
+
 html[data-theme="light"] .bg-base-200 {
   background-color: #f3f4f6 !important;
 }
@@ -179,6 +241,15 @@ html[data-theme="dark"] nav {
   background-color: #000000 !important;
 }
 
+/* Dark Theme: Ensure links are readable */
+html[data-theme="dark"] a {
+  color: #60a5fa !important; /* Light blue that's readable on black */
+}
+
+html[data-theme="dark"] a:hover {
+  color: #93c5fd !important; /* Lighter blue on hover */
+}
+
 /* Cassette Theme: Force black background and neon green text */
 html[data-theme="cassette"] {
   color-scheme: dark;
@@ -199,6 +270,15 @@ html[data-theme="cassette"] .cassette-nav-link {
   html[data-theme="cassette"] .cassette-nav-link {
     font-size: 3rem !important;
   }
+}
+
+/* Cassette Theme: Ensure links are readable */
+html[data-theme="cassette"] a {
+  color: #39FF14 !important; /* Neon green for links */
+}
+
+html[data-theme="cassette"] a:hover {
+  color: #0FF !important; /* Neon cyan on hover */
 }
 
 html[data-theme="cassette"] .bg-base-100 {
@@ -241,6 +321,15 @@ html[data-theme="homebrew"] .text-base-content\/50 {
 
 html[data-theme="homebrew"] .border-base-300 {
   border-color: #8B7355 !important;
+}
+
+/* Homebrew Theme: Ensure links are readable */
+html[data-theme="homebrew"] a {
+  color: #8B4513 !important; /* Dark brown for links */
+}
+
+html[data-theme="homebrew"] a:hover {
+  color: #654321 !important; /* Darker brown on hover */
 }
 
 html[data-theme="homebrew"] .bg-base-200 {

@@ -4,7 +4,7 @@ import Image from "next/image";
 export default function Adventure95Page() {
   return (
     <PageShell title="Adventure 95">
-      <div className="prose prose-invert max-w-none text-zinc-300">
+      <div className="prose max-w-none text-base-content">
         <div className="mb-6 flex justify-center">
           <Image
             src="/images/beholder.png"
@@ -16,11 +16,11 @@ export default function Adventure95Page() {
         </div>
         
         <div className="mb-6 text-center">
-          <p className="text-zinc-400 text-sm uppercase tracking-wider">Coming Soon</p>
+          <p className="text-base-content/70 text-sm uppercase tracking-wider">Coming Soon</p>
         </div>
         
-        <p className="text-lg leading-relaxed">
-          <strong className="text-white">Adventure95</strong> is a custom retro-style RPG system and game engine built inside a Windows-95 inspired interface. It blends classic OSR principles with modern, streamlined design: procedural maps, tile-based exploration, turn-based battles, and a desktop-style UI where every window is part of the gameplay. The entire system is data-driven, using small JSON files for monsters, items, quests, and dungeons, making it highly moddable and easy to expand. It's built for fast play, simple mechanics, and that old-school computer vibe.
+        <p className="text-lg leading-relaxed text-base-content">
+          <strong className="text-base-content font-bold">Adventure95</strong> is a custom retro-style RPG system and game engine built inside a Windows-95 inspired interface. It blends classic OSR principles with modern, streamlined design: procedural maps, tile-based exploration, turn-based battles, and a desktop-style UI where every window is part of the gameplay. The entire system is data-driven, using small JSON files for monsters, items, quests, and dungeons, making it highly moddable and easy to expand. It's built for fast play, simple mechanics, and that old-school computer vibe.
         </p>
       </div>
     </PageShell>
